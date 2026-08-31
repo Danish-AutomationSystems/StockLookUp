@@ -34,4 +34,39 @@ describe('AdminPage', () => {
       );
     });
   });
+
+  it('shows error message when GET request fails', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      json: async () => ({ error: 'Unauthorized' }),
+    }) as any;
+
+    render(<AdminPage />);
+
+    await waitFor(() =>
+      expect(screen.getByText(/Failed to load configuration. Refresh to try again./i)).toBeInTheDocument()
+    );
+  });
+
+  it('shows error message when GET fetch is rejected', async () => {
+    global.fetch = vi.fn().mockRejectedValue(new Error('Network error')) as any;
+
+    render(<AdminPage />);
+
+    await waitFor(() =>
+      expect(screen.getByText(/Failed to load configuration. Refresh to try again./i)).toBeInTheDocument()
+    );
+  });
+
+  it('shows network error status when POST fetch is rejected', async () => {
+    render(<AdminPage />);
+
+    await waitFor(() => expect(screen.getByLabelText(/search column/i)).toBeInTheDocument());
+
+    global.fetch = vi.fn().mockRejectedValue(new Error('Network error')) as any;
+
+    await userEvent.click(screen.getByRole('button', { name: /save/i }));
+
+    await waitFor(() => expect(screen.getByText(/Network error, try again./i)).toBeInTheDocument());
+  });
 });

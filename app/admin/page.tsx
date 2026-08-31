@@ -9,14 +9,24 @@ export default function AdminPage() {
   const [resultColumns, setResultColumns] = useState<string[]>([]);
   const [status, setStatus] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     fetch('/api/admin/config')
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) {
+          throw new Error('Failed to load configuration');
+        }
+        return res.json();
+      })
       .then((body) => {
         setHeaders(body.headers ?? []);
         setSearchColumn(body.config?.searchColumn ?? '');
         setResultColumns(body.config?.resultColumns ?? []);
+        setLoadError(null);
+      })
+      .catch(() => {
+        setLoadError('Failed to load configuration. Refresh to try again.');
       })
       .finally(() => setLoading(false));
   }, []);
@@ -29,16 +39,34 @@ export default function AdminPage() {
 
   async function handleSave() {
     setStatus(null);
-    const res = await fetch('/api/admin/config', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ searchColumn, resultColumns }),
-    });
-    const body = await res.json();
-    setStatus(res.ok ? 'Saved.' : `Error: ${(body.details ?? [body.error]).join(', ')}`);
+    try {
+      const res = await fetch('/api/admin/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ searchColumn, resultColumns }),
+      });
+      const body = await res.json();
+      setStatus(res.ok ? 'Saved.' : `Error: ${(body.details ?? [body.error]).join(', ')}`);
+    } catch {
+      setStatus('Network error, try again.');
+    }
   }
 
   if (loading) return <main className="p-8">Loading...</main>;
+
+  if (loadError) {
+    return (
+      <main className="mx-auto max-w-xl p-8">
+        <div className="mb-6 flex items-center justify-between">
+          <h1 className="text-2xl font-semibold">Admin: Column Mapping</h1>
+          <Link href="/" className="text-blue-600 hover:underline">
+            Back to search
+          </Link>
+        </div>
+        <p className="text-red-600">{loadError}</p>
+      </main>
+    );
+  }
 
   return (
     <main className="mx-auto max-w-xl p-8">
