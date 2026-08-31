@@ -4,6 +4,13 @@ import type { SheetConfig } from '@/types';
 
 const CONFIG_SHEET_TITLE = '_config';
 
+function isMissingRangeError(err: unknown): boolean {
+  const anyErr = err as any;
+  const status = anyErr?.code ?? anyErr?.response?.status;
+  const message: string = anyErr?.message ?? anyErr?.response?.data?.error?.message ?? '';
+  return status === 400 && /unable to parse range/i.test(message);
+}
+
 let cachedClient: sheets_v4.Sheets | null = null;
 
 export function getSheetsClient(): sheets_v4.Sheets {
@@ -57,11 +64,20 @@ export async function getConfig(
   client: sheets_v4.Sheets,
   spreadsheetId: string
 ): Promise<SheetConfig | null> {
-  await ensureConfigSheet(client, spreadsheetId);
-  const res = await client.spreadsheets.values.get({
-    spreadsheetId,
-    range: `'${CONFIG_SHEET_TITLE}'!A1:B2`,
-  });
+  let res;
+  try {
+    res = await client.spreadsheets.values.get({
+      spreadsheetId,
+      range: `'${CONFIG_SHEET_TITLE}'!A1:B2`,
+    });
+  } catch (err) {
+    // A missing `_config` sheet/range surfaces as a 400 "Unable to parse
+    // range" error from the Sheets API — treat that specific case as "no
+    // config yet". Anything else (auth failure, quota, permissions, network)
+    // is a real problem and should propagate to the caller.
+    if (isMissingRangeError(err)) return null;
+    throw err;
+  }
   const values = (res.data.values ?? []) as string[][];
   if (values.length < 2) return null;
 
@@ -74,10 +90,15 @@ export async function getConfig(
   const resultColumnsRaw = dataRow[resultColsIdx];
   if (!searchColumn || !resultColumnsRaw) return null;
 
-  return {
-    searchColumn,
-    resultColumns: resultColumnsRaw.split(',').map((c) => c.trim()).filter(Boolean),
-  };
+  let resultColumns: string[];
+  try {
+    const parsed = JSON.parse(resultColumnsRaw);
+    resultColumns = Array.isArray(parsed) ? parsed.filter((c) => typeof c === 'string') : [];
+  } catch {
+    return null;
+  }
+
+  return { searchColumn, resultColumns };
 }
 
 export async function setConfig(
@@ -93,7 +114,7 @@ export async function setConfig(
     requestBody: {
       values: [
         ['searchColumn', 'resultColumns'],
-        [config.searchColumn, config.resultColumns.join(',')],
+        [config.searchColumn, JSON.stringify(config.resultColumns)],
       ],
     },
   });

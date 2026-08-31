@@ -95,15 +95,48 @@ describe('getConfig', () => {
   it('parses a stored config', async () => {
     const client = makeMockClient();
     client.spreadsheets.values.get = vi.fn().mockResolvedValue({
-      data: { values: [['searchColumn', 'resultColumns'], ['SKU', 'Name, Price']] },
+      data: { values: [['searchColumn', 'resultColumns'], ['SKU', '["Name","Price"]']] },
     });
     const result = await getConfig(client, 'sheet-id');
     expect(result).toEqual({ searchColumn: 'SKU', resultColumns: ['Name', 'Price'] });
   });
+
+  it('correctly round-trips a header containing a comma', async () => {
+    const client = makeMockClient();
+    client.spreadsheets.values.get = vi.fn().mockResolvedValue({
+      data: { values: [['searchColumn', 'resultColumns'], ['SKU', JSON.stringify(['Price, USD', 'Name'])]] },
+    });
+    const result = await getConfig(client, 'sheet-id');
+    expect(result).toEqual({ searchColumn: 'SKU', resultColumns: ['Price, USD', 'Name'] });
+  });
+
+  it('does not call batchUpdate (getConfig only reads, never mutates)', async () => {
+    const client = makeMockClient();
+    await getConfig(client, 'sheet-id');
+    expect(client.spreadsheets.batchUpdate).not.toHaveBeenCalled();
+  });
+
+  it('returns null when the _config sheet does not exist (values.get throws a 400 "unable to parse range" error)', async () => {
+    const client = makeMockClient();
+    const err: any = new Error('Unable to parse range: _config!A1:B2');
+    err.code = 400;
+    client.spreadsheets.values.get = vi.fn().mockRejectedValue(err);
+    const result = await getConfig(client, 'sheet-id');
+    expect(result).toBeNull();
+    expect(client.spreadsheets.batchUpdate).not.toHaveBeenCalled();
+  });
+
+  it('propagates a genuine error (e.g. permissions/quota) instead of treating it as "no config"', async () => {
+    const client = makeMockClient();
+    const err: any = new Error('The caller does not have permission');
+    err.code = 403;
+    client.spreadsheets.values.get = vi.fn().mockRejectedValue(err);
+    await expect(getConfig(client, 'sheet-id')).rejects.toThrow('The caller does not have permission');
+  });
 });
 
 describe('setConfig', () => {
-  it('writes the config to the _config sheet', async () => {
+  it('writes the config to the _config sheet as a JSON-encoded resultColumns cell', async () => {
     const client = makeMockClient();
     await setConfig(client, 'sheet-id', { searchColumn: 'SKU', resultColumns: ['Name', 'Price'] });
     expect(client.spreadsheets.values.update).toHaveBeenCalledWith({
@@ -113,7 +146,23 @@ describe('setConfig', () => {
       requestBody: {
         values: [
           ['searchColumn', 'resultColumns'],
-          ['SKU', 'Name,Price'],
+          ['SKU', '["Name","Price"]'],
+        ],
+      },
+    });
+  });
+
+  it('preserves a comma-containing header when round-tripped through JSON encoding', async () => {
+    const client = makeMockClient();
+    await setConfig(client, 'sheet-id', { searchColumn: 'SKU', resultColumns: ['Price, USD'] });
+    expect(client.spreadsheets.values.update).toHaveBeenCalledWith({
+      spreadsheetId: 'sheet-id',
+      range: "'_config'!A1:B2",
+      valueInputOption: 'RAW',
+      requestBody: {
+        values: [
+          ['searchColumn', 'resultColumns'],
+          ['SKU', '["Price, USD"]'],
         ],
       },
     });
