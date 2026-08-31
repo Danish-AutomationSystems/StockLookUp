@@ -22,6 +22,15 @@ describe('authOptions.callbacks.signIn', () => {
 describe('authOptions.callbacks.jwt/session', () => {
   beforeEach(() => {
     process.env.ADMIN_EMAIL = 'testing@automationsystems.org';
+    process.env.ALLOWED_DOMAIN = 'automationsystems.org';
+  });
+
+  it('invalidates the token if the email no longer matches the allowed domain', async () => {
+    const jwt = authOptions.callbacks!.jwt!;
+    const token = await jwt({ token: { email: 'testing@automationsystems.org' } } as any);
+    process.env.ALLOWED_DOMAIN = 'othercompany.org';
+    const revalidated = await jwt({ token } as any);
+    expect(revalidated).toEqual({});
   });
 
   it('marks the admin email as isAdmin in the token', async () => {

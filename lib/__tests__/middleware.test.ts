@@ -21,4 +21,12 @@ describe('isAuthorized', () => {
   it('allows an admin on a nested /admin path', () => {
     expect(isAuthorized({ isAdmin: true }, '/admin/settings')).toBe(true);
   });
+
+  it('denies a signed-in non-admin on /api/admin/config', () => {
+    expect(isAuthorized({ isAdmin: false }, '/api/admin/config')).toBe(false);
+  });
+
+  it('allows an admin on /api/admin/config', () => {
+    expect(isAuthorized({ isAdmin: true }, '/api/admin/config')).toBe(true);
+  });
 });

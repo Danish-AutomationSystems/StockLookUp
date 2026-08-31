@@ -2,7 +2,7 @@ import { withAuth } from 'next-auth/middleware';
 
 export function isAuthorized(token: { isAdmin?: boolean } | null, pathname: string): boolean {
   if (!token) return false;
-  if (pathname.startsWith('/admin')) return Boolean(token.isAdmin);
+  if (pathname.startsWith('/admin') || pathname.startsWith('/api/admin')) return Boolean(token.isAdmin);
   return true;
 }
 
@@ -14,5 +14,5 @@ export default withAuth({
 });
 
 export const config = {
-  matcher: ['/', '/admin/:path*'],
+  matcher: ['/', '/admin/:path*', '/api/admin/:path*'],
 };

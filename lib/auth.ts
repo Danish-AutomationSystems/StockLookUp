@@ -12,12 +12,15 @@ export const authOptions: NextAuthOptions = {
       },
     }),
   ],
-  session: { strategy: 'jwt' },
+  session: { strategy: 'jwt', maxAge: 60 * 60 * 8 },
   callbacks: {
     async signIn({ user }) {
       return isAllowedDomain(user.email, process.env.ALLOWED_DOMAIN ?? 'automationsystems.org');
     },
     async jwt({ token }) {
+      if (!isAllowedDomain(token.email, process.env.ALLOWED_DOMAIN ?? 'automationsystems.org')) {
+        return {};
+      }
       token.isAdmin = isAdmin(token.email, process.env.ADMIN_EMAIL ?? '');
       return token;
     },
