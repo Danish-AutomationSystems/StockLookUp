@@ -79,4 +79,56 @@ describe('POST /api/admin/config', () => {
     expect(res.status).toBe(200);
     expect(setConfig).toHaveBeenCalledWith({}, 'sheet-id', { searchColumn: 'SKU', resultColumns: ['Name'] });
   });
+
+  it('returns 400 for malformed JSON in the request body', async () => {
+    (getServerSession as any).mockResolvedValue({ user: { email: 'testing@automationsystems.org', isAdmin: true } });
+    const req = new NextRequest('http://localhost/api/admin/config', {
+      method: 'POST',
+      body: '{not valid json',
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(400);
+  });
+
+  it('returns 400 when body is null', async () => {
+    (getServerSession as any).mockResolvedValue({ user: { email: 'testing@automationsystems.org', isAdmin: true } });
+    const res = await POST(makePostRequest(null));
+    expect(res.status).toBe(400);
+  });
+
+  it('returns 400 when resultColumns is not an array', async () => {
+    (getServerSession as any).mockResolvedValue({ user: { email: 'testing@automationsystems.org', isAdmin: true } });
+    const res = await POST(makePostRequest({ searchColumn: 'SKU', resultColumns: 'Name' }));
+    expect(res.status).toBe(400);
+  });
+
+  it('returns 400 when resultColumns contains non-string entries', async () => {
+    (getServerSession as any).mockResolvedValue({ user: { email: 'testing@automationsystems.org', isAdmin: true } });
+    const res = await POST(makePostRequest({ searchColumn: 'SKU', resultColumns: [1, 2] }));
+    expect(res.status).toBe(400);
+  });
+
+  it('returns 400 when searchColumn is missing', async () => {
+    (getServerSession as any).mockResolvedValue({ user: { email: 'testing@automationsystems.org', isAdmin: true } });
+    const res = await POST(makePostRequest({ resultColumns: ['Name'] }));
+    expect(res.status).toBe(400);
+  });
+
+  it('returns 503 (not the raw error message) when the Sheets API throws during POST', async () => {
+    (getServerSession as any).mockResolvedValue({ user: { email: 'testing@automationsystems.org', isAdmin: true } });
+    (getDataSheetTitle as any).mockRejectedValue(new Error('internal sheets failure details'));
+    const res = await POST(makePostRequest({ searchColumn: 'SKU', resultColumns: ['Name'] }));
+    expect(res.status).toBe(503);
+    const body = await res.json();
+    expect(JSON.stringify(body)).not.toContain('internal sheets failure details');
+  });
+
+  it('returns 503 (not the raw error message) when the Sheets API throws during GET', async () => {
+    (getServerSession as any).mockResolvedValue({ user: { email: 'testing@automationsystems.org', isAdmin: true } });
+    (getDataSheetTitle as any).mockRejectedValue(new Error('internal sheets failure details'));
+    const res = await GET();
+    expect(res.status).toBe(503);
+    const body = await res.json();
+    expect(JSON.stringify(body)).not.toContain('internal sheets failure details');
+  });
 });

@@ -12,15 +12,20 @@ export async function GET(req: NextRequest) {
   const query = req.nextUrl.searchParams.get('q');
   if (!query) return NextResponse.json({ error: 'Missing query parameter "q"' }, { status: 400 });
 
-  const spreadsheetId = requireEnv('GOOGLE_SHEET_ID');
-  const client = getSheetsClient();
-  const config = await getConfig(client, spreadsheetId);
-  if (!config) return NextResponse.json({ error: 'Search not configured yet' }, { status: 503 });
+  try {
+    const spreadsheetId = requireEnv('GOOGLE_SHEET_ID');
+    const client = getSheetsClient();
+    const config = await getConfig(client, spreadsheetId);
+    if (!config) return NextResponse.json({ error: 'Search not configured yet' }, { status: 503 });
 
-  const sheetTitle = await getDataSheetTitle(client, spreadsheetId);
-  const { headers, rows } = await getHeadersAndRows(client, spreadsheetId, sheetTitle);
-  const result = findMatchingRow(headers, rows, config, query);
+    const sheetTitle = await getDataSheetTitle(client, spreadsheetId);
+    const { headers, rows } = await getHeadersAndRows(client, spreadsheetId, sheetTitle);
+    const result = findMatchingRow(headers, rows, config, query);
 
-  if (!result) return NextResponse.json({ error: 'No match found' }, { status: 404 });
-  return NextResponse.json({ result });
+    if (!result) return NextResponse.json({ error: 'No match found' }, { status: 404 });
+    return NextResponse.json({ result });
+  } catch (err) {
+    console.error('Search failed:', err);
+    return NextResponse.json({ error: 'Search temporarily unavailable' }, { status: 503 });
+  }
 }

@@ -66,4 +66,13 @@ describe('GET /api/search', () => {
     const body = await res.json();
     expect(body).toEqual({ result: { Name: 'Widget' } });
   });
+
+  it('returns 503 (not the raw error message) when the Sheets API throws', async () => {
+    (getServerSession as any).mockResolvedValue({ user: { email: 'sales@automationsystems.org' } });
+    (getConfig as any).mockRejectedValue(new Error('internal sheets failure details'));
+    const res = await GET(makeRequest('abc'));
+    expect(res.status).toBe(503);
+    const body = await res.json();
+    expect(JSON.stringify(body)).not.toContain('internal sheets failure details');
+  });
 });
