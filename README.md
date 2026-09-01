@@ -16,7 +16,15 @@ The browser never receives service-account credentials, Sheet secrets, or direct
 
 1. Copy `.env.local.example` to `.env.local`.
 2. Fill in the required environment variable names with local development values.
-3. Authenticate and link the local checkout to the Vercel project before testing Google Sheets access through Workload Identity Federation:
+3. Install dependencies:
+
+```bash
+npm install
+```
+
+Use `npm ci` instead when you want a clean install from the committed lockfile.
+
+4. Authenticate and link the local checkout to the Vercel project before testing Google Sheets access through Workload Identity Federation:
 
 ```bash
 vercel login
@@ -24,14 +32,19 @@ vercel link --yes --project stocklooker --team <team-id-or-slug>
 vercel env pull .env.local --environment=development
 ```
 
-The linked project metadata is stored in `.vercel/project.json`. In this repo, [lib/googleAuth.ts](/D:/AutomationSystems/StockLookUp/.claude/worktrees/stocklooker-build/lib/googleAuth.ts) calls `getVercelOidcToken()` from `@vercel/oidc`. In production, Vercel provides the request-scoped OIDC token for the function runtime. Locally, the supported workflow is to stay logged into the Vercel CLI, keep the project linked, and run through Vercel so `getVercelOidcToken()` can refresh the local OIDC token when needed.
+The linked project metadata is stored in `.vercel/project.json`. In this repo, [lib/googleAuth.ts](lib/googleAuth.ts) calls `getVercelOidcToken()` from `@vercel/oidc`. In production, Vercel provides the request-scoped OIDC token for the function runtime. Locally, the supported workflow is to stay logged into the Vercel CLI, keep the project linked, and run through Vercel so `getVercelOidcToken()` can refresh the local OIDC token when needed.
 
-4. Start local development with the linked Vercel workflow, then verify the app:
+5. Verify the app before starting the foreground Vercel dev server:
+
+```bash
+npm test
+npm run build
+```
+
+6. Start local development in a separate terminal:
 
 ```bash
 vercel dev
-npm test
-npm run build
 ```
 
 Do not copy a Vercel OIDC token into committed files, docs, screenshots, or Git history. If a local token expires, refresh it through the authenticated CLI and linked-project flow instead of committing a value to `.env.local.example`, `README.md`, or any source file.
