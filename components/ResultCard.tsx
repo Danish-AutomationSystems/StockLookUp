@@ -2,11 +2,11 @@ import type { SearchResult } from '@/types';
 
 export default function ResultCard({ result }: { result: SearchResult }) {
   return (
-    <dl className="mt-6 grid gap-3 rounded border border-gray-200 bg-white p-4">
+    <dl className="surface-card mt-6 grid gap-4 p-4 sm:grid-cols-2 sm:p-6">
       {Object.entries(result).map(([label, value]) => (
-        <div key={label}>
-          <dt className="text-sm font-medium text-gray-500">{label}</dt>
-          <dd className="text-lg text-gray-900">{value}</dd>
+        <div key={label} className="min-w-0 border-b border-[var(--color-border)] pb-3 last:border-b-0 sm:last:border-b">
+          <dt className="text-xs font-bold uppercase tracking-wide text-[var(--color-muted)]">{label}</dt>
+          <dd className="mt-1 break-words text-base font-medium text-[var(--color-navy)]">{value}</dd>
         </div>
       ))}
     </dl>

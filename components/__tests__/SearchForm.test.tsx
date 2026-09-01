@@ -4,6 +4,12 @@ import userEvent from '@testing-library/user-event';
 import SearchForm from '@/components/SearchForm';
 
 describe('SearchForm', () => {
+  it('labels the search field and exposes the loading state', () => {
+    render(<SearchForm onSearch={vi.fn()} loading />);
+    expect(screen.getByRole('textbox', { name: /search/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Searching...' })).toBeDisabled();
+  });
+
   it('calls onSearch with the typed value on submit', async () => {
     const onSearch = vi.fn();
     render(<SearchForm onSearch={onSearch} loading={false} />);

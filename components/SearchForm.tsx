@@ -17,18 +17,22 @@ export default function SearchForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex gap-2">
-      <input
-        type="text"
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        placeholder="Enter a value to search..."
-        className="flex-1 rounded border border-gray-300 px-3 py-2"
-      />
+    <form onSubmit={handleSubmit} className="flex flex-col gap-3 sm:flex-row sm:items-end">
+      <label htmlFor="search-query" className="flex-1 text-sm font-medium text-gray-700">
+        <span className="mb-1 block">Search</span>
+        <input
+          id="search-query"
+          type="text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Enter a value to search..."
+          className="field-control"
+        />
+      </label>
       <button
         type="submit"
         disabled={loading}
-        className="rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-50"
+        className="button-primary w-full disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
       >
         {loading ? 'Searching...' : 'Search'}
       </button>
