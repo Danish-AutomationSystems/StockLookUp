@@ -28,16 +28,9 @@ describe('logServerFailure', () => {
 
     logServerFailure('search.GET', err);
 
-    expect(consoleErrorSpy).toHaveBeenCalledWith('Server failure', {
-      operation: 'search.GET',
-      classification: 'error',
-      status: 503,
-    });
-
-    const serializedCalls = JSON.stringify(consoleErrorSpy.mock.calls);
-    expect(serializedCalls).not.toContain('authorization failed for subject_token abc123');
-    expect(serializedCalls).not.toContain('Bearer secret-token');
-    expect(serializedCalls).not.toContain('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.payload.signature');
+    expect(consoleErrorSpy.mock.calls).toEqual([
+      ['Server failure', { operation: 'search.GET', classification: 'error', status: 503 }],
+    ]);
   });
 
   it('redacts raw object contents and keeps only object classification and numeric status', () => {
@@ -53,16 +46,16 @@ describe('logServerFailure', () => {
       message: 'do not leak this',
     });
 
-    expect(consoleErrorSpy).toHaveBeenCalledWith('Server failure', {
-      operation: 'admin.config.POST',
-      classification: 'object',
-      status: 400,
-    });
+    expect(consoleErrorSpy.mock.calls).toEqual([
+      ['Server failure', { operation: 'admin.config.POST', classification: 'object', status: 400 }],
+    ]);
+  });
 
-    const serializedCalls = JSON.stringify(consoleErrorSpy.mock.calls);
-    expect(serializedCalls).not.toContain('subject_token');
-    expect(serializedCalls).not.toContain('Bearer secret-token');
-    expect(serializedCalls).not.toContain('Sensitive upstream body');
-    expect(serializedCalls).not.toContain('do not leak this');
+  it('does not leak a sensitive Error message when the Error has no enumerable custom fields', () => {
+    logServerFailure('admin.config.GET', new Error('subject_token=abc123 authorization=Bearer secret-token'));
+
+    expect(consoleErrorSpy.mock.calls).toEqual([
+      ['Server failure', { operation: 'admin.config.GET', classification: 'error' }],
+    ]);
   });
 });

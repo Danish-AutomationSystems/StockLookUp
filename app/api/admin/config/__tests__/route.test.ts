@@ -168,14 +168,9 @@ describe('POST /api/admin/config', () => {
     expect(res.status).toBe(503);
     const body = await res.json();
     expect(JSON.stringify(body)).not.toContain('internal sheets failure details');
-    expect(consoleErrorSpy).toHaveBeenCalledWith(
-      'Server failure',
-      expect.objectContaining({ operation: 'admin.config.POST', classification: 'error', status: 503 })
-    );
-    const serializedCalls = JSON.stringify(consoleErrorSpy.mock.calls);
-    expect(serializedCalls).not.toContain('subject_token');
-    expect(serializedCalls).not.toContain('Bearer secret-token');
-    expect(serializedCalls).not.toContain('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.payload.signature');
+    expect(consoleErrorSpy.mock.calls).toEqual([
+      ['Server failure', { operation: 'admin.config.POST', classification: 'error', status: 503 }],
+    ]);
   });
 
   it('returns 503 (not the raw error message) when the Sheets API throws during GET', async () => {
@@ -196,13 +191,8 @@ describe('POST /api/admin/config', () => {
     expect(res.status).toBe(503);
     const body = await res.json();
     expect(JSON.stringify(body)).not.toContain('internal sheets failure details');
-    expect(consoleErrorSpy).toHaveBeenCalledWith(
-      'Server failure',
-      expect.objectContaining({ operation: 'admin.config.GET', classification: 'error', status: 503 })
-    );
-    const serializedCalls = JSON.stringify(consoleErrorSpy.mock.calls);
-    expect(serializedCalls).not.toContain('subject_token');
-    expect(serializedCalls).not.toContain('authorization=secret');
-    expect(serializedCalls).not.toContain('Bearer secret-token');
+    expect(consoleErrorSpy.mock.calls).toEqual([
+      ['Server failure', { operation: 'admin.config.GET', classification: 'error', status: 503 }],
+    ]);
   });
 });

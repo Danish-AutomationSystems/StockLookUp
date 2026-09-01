@@ -95,13 +95,8 @@ describe('GET /api/search', () => {
     expect(res.status).toBe(503);
     const body = await res.json();
     expect(JSON.stringify(body)).not.toContain('internal sheets failure details');
-    expect(consoleErrorSpy).toHaveBeenCalledWith(
-      'Server failure',
-      expect.objectContaining({ operation: 'search.GET', classification: 'error', status: 503 })
-    );
-    const serializedCalls = JSON.stringify(consoleErrorSpy.mock.calls);
-    expect(serializedCalls).not.toContain('subject_token');
-    expect(serializedCalls).not.toContain('Bearer secret-token');
-    expect(serializedCalls).not.toContain('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.payload.signature');
+    expect(consoleErrorSpy.mock.calls).toEqual([
+      ['Server failure', { operation: 'search.GET', classification: 'error', status: 503 }],
+    ]);
   });
 });
