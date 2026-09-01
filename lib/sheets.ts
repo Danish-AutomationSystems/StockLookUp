@@ -1,5 +1,6 @@
 import { google, sheets_v4 } from 'googleapis';
 import { getGoogleAuthClient } from './googleAuth';
+import type { BaseExternalAccountClient } from 'google-auth-library';
 import type { SheetConfig } from '@/types';
 
 const CONFIG_SHEET_TITLE = '_config';
@@ -11,13 +12,24 @@ function isMissingRangeError(err: unknown): boolean {
   return status === 400 && /unable to parse range/i.test(message);
 }
 
-let cachedClient: sheets_v4.Sheets | null = null;
+let defaultClient: sheets_v4.Sheets | null = null;
+const explicitAuthClients = new WeakMap<BaseExternalAccountClient, sheets_v4.Sheets>();
 
-export function getSheetsClient(): sheets_v4.Sheets {
+export function getSheetsClient(): sheets_v4.Sheets;
+export function getSheetsClient(auth: BaseExternalAccountClient): sheets_v4.Sheets;
+export function getSheetsClient(auth?: BaseExternalAccountClient): sheets_v4.Sheets {
+  if (!auth) {
+    if (defaultClient) return defaultClient;
+    defaultClient = google.sheets({ version: 'v4', auth: getGoogleAuthClient() as any });
+    return defaultClient;
+  }
+
+  const cachedClient = explicitAuthClients.get(auth);
   if (cachedClient) return cachedClient;
-  const auth = getGoogleAuthClient();
-  cachedClient = google.sheets({ version: 'v4', auth: auth as any });
-  return cachedClient;
+
+  const client = google.sheets({ version: 'v4', auth: auth as any });
+  explicitAuthClients.set(auth, client);
+  return client;
 }
 
 export async function getDataSheetTitle(

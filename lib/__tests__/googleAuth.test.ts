@@ -1,5 +1,11 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+
+vi.mock('@vercel/oidc', () => ({
+  getVercelOidcToken: vi.fn().mockResolvedValue('fallback-oidc-token'),
+}));
+
 import { requireEnv, getGoogleAuthClient } from '@/lib/googleAuth';
+import { getVercelOidcToken } from '@vercel/oidc';
 
 const REQUIRED_VARS = [
   'GCP_PROJECT_NUMBER',
@@ -43,6 +49,34 @@ describe('getGoogleAuthClient', () => {
 
   it('builds a client without throwing when all env vars are set', () => {
     expect(() => getGoogleAuthClient()).not.toThrow();
+  });
+
+  it('returns a client that can preflight an access-token exchange', () => {
+    expect(getGoogleAuthClient()).toHaveProperty('getAccessToken');
+  });
+
+  it('uses the request-scoped OIDC token as its subject-token supplier when provided', async () => {
+    const client = getGoogleAuthClient('request-scoped-oidc-token') as any;
+
+    await expect(client.subjectTokenSupplier.getSubjectToken()).resolves.toBe('request-scoped-oidc-token');
+    expect(getVercelOidcToken).not.toHaveBeenCalled();
+  });
+
+  it('uses Vercel OIDC with the configured audience when no request token is provided', async () => {
+    const client = getGoogleAuthClient() as any;
+
+    await expect(client.subjectTokenSupplier.getSubjectToken()).resolves.toBe('fallback-oidc-token');
+    expect(getVercelOidcToken).toHaveBeenCalledWith({ audience: 'https://vercel.com/automation-systems' });
+  });
+
+  it('does not force a quota project for Google API requests', () => {
+    expect((getGoogleAuthClient() as any).quotaProjectId).toBeUndefined();
+  });
+
+  it('requests the Google Sheets scope for service-account access tokens', () => {
+    expect((getGoogleAuthClient() as any).scopes).toEqual([
+      'https://www.googleapis.com/auth/spreadsheets',
+    ]);
   });
 
   it('throws when GCP_PROJECT_NUMBER is missing', () => {

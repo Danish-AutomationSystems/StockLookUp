@@ -1,5 +1,15 @@
 import { describe, it, expect, vi } from 'vitest';
+vi.mock('googleapis', () => ({
+  google: { sheets: vi.fn(({ auth }) => ({ auth })) },
+}));
+vi.mock('@/lib/googleAuth', () => ({
+  getGoogleAuthClient: vi.fn(),
+}));
+
+import { google } from 'googleapis';
+import { getGoogleAuthClient } from '@/lib/googleAuth';
 import {
+  getSheetsClient,
   getDataSheetTitle,
   getHeadersAndRows,
   ensureConfigSheet,
@@ -22,6 +32,43 @@ function makeMockClient(overrides: any = {}) {
     },
   } as any;
 }
+
+describe('getSheetsClient', () => {
+  it('reuses the no-argument singleton without reconstructing auth', () => {
+    const defaultAuth = {} as any;
+    (getGoogleAuthClient as any).mockReturnValue(defaultAuth);
+
+    const firstClient = getSheetsClient();
+    const secondClient = getSheetsClient();
+
+    expect(firstClient).toBe(secondClient);
+    expect(getGoogleAuthClient).toHaveBeenCalledOnce();
+    expect(google.sheets).toHaveBeenCalledOnce();
+  });
+
+  it('reuses a client for the same explicit auth client', () => {
+    const auth = {} as any;
+
+    const firstClient = getSheetsClient(auth);
+    const secondClient = getSheetsClient(auth);
+
+    expect(firstClient).toBe(secondClient);
+  });
+
+  it('uses the supplied auth client instead of reusing a client for different credentials', () => {
+    const firstAuth = {} as any;
+    const secondAuth = {} as any;
+    const sheetsCallsBefore = (google.sheets as any).mock.calls.length;
+
+    const firstClient = getSheetsClient(firstAuth);
+    const secondClient = getSheetsClient(secondAuth);
+
+    expect(firstClient).toMatchObject({ auth: firstAuth });
+    expect(secondClient).toMatchObject({ auth: secondAuth });
+    expect(firstClient).not.toBe(secondClient);
+    expect(google.sheets).toHaveBeenCalledTimes(sheetsCallsBefore + 2);
+  });
+});
 
 describe('getDataSheetTitle', () => {
   it('returns the title of the first non-_config sheet', async () => {

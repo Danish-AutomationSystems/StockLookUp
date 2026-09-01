@@ -7,9 +7,14 @@ vi.mock('@/lib/sheets', () => ({
   getHeadersAndRows: vi.fn(),
   getConfig: vi.fn(),
 }));
+vi.mock('@/lib/googleAuth', () => ({
+  getGoogleAuthClient: vi.fn(() => ({ getAccessToken: vi.fn().mockResolvedValue({ token: 'access-token' }) })),
+  requireEnv: vi.fn((name: string) => process.env[name]),
+}));
 
 import { getServerSession } from 'next-auth';
-import { getDataSheetTitle, getHeadersAndRows, getConfig } from '@/lib/sheets';
+import { getSheetsClient, getDataSheetTitle, getHeadersAndRows, getConfig } from '@/lib/sheets';
+import { getGoogleAuthClient } from '@/lib/googleAuth';
 import { GET } from '@/app/api/search/route';
 import { NextRequest } from 'next/server';
 
@@ -32,6 +37,9 @@ afterEach(() => {
 describe('GET /api/search', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    (getGoogleAuthClient as any).mockReset().mockReturnValue({
+      getAccessToken: vi.fn().mockResolvedValue({ token: 'access-token' }),
+    });
     process.env.GOOGLE_SHEET_ID = 'sheet-id';
   });
 
@@ -78,6 +86,29 @@ describe('GET /api/search', () => {
     expect(body.result).not.toHaveProperty('SKU');
   });
 
+  it('uses the incoming Vercel OIDC token to authenticate the Sheets search', async () => {
+    (getServerSession as any).mockResolvedValue({ user: { email: 'sales@automationsystems.org' } });
+    const auth = { getAccessToken: vi.fn().mockResolvedValue({ token: 'access-token' }) };
+    (getGoogleAuthClient as any).mockReturnValue(auth);
+    (getConfig as any).mockResolvedValue({ searchColumn: 'SKU', resultColumns: ['Name'] });
+    (getDataSheetTitle as any).mockResolvedValue('Products');
+    (getHeadersAndRows as any).mockResolvedValue({
+      headers: ['SKU', 'Name'],
+      rows: [['ABC123', 'Widget']],
+    });
+    const request = new NextRequest('http://localhost/api/search?q=ABC123', {
+      headers: { 'x-vercel-oidc-token': 'request-scoped-oidc-token' },
+    });
+
+    const res = await GET(request);
+
+    expect(res.status).toBe(200);
+    await expect(res.json()).resolves.toEqual({ result: { Name: 'Widget' } });
+    expect(getGoogleAuthClient).toHaveBeenCalledWith('request-scoped-oidc-token');
+    expect(auth.getAccessToken).toHaveBeenCalledOnce();
+    expect(getSheetsClient).toHaveBeenCalledWith(auth);
+  });
+
   it('returns a safe configuration error when the persisted config is stale', async () => {
     (getServerSession as any).mockResolvedValue({ user: { email: 'sales@automationsystems.org' } });
     (getConfig as any).mockResolvedValue({ searchColumn: 'SKU', resultColumns: ['Price', 'Name'] });
@@ -110,7 +141,7 @@ describe('GET /api/search', () => {
     const body = await res.json();
     expect(JSON.stringify(body)).not.toContain('internal sheets failure details');
     expect(consoleErrorSpy.mock.calls).toEqual([
-      ['Server failure', { operation: 'search.GET', classification: 'error', status: 503 }],
+      ['Server failure', { operation: 'search.GET', stage: 'configuration read', classification: 'error', status: 503 }],
     ]);
   });
 });

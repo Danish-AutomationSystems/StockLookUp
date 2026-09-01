@@ -24,6 +24,9 @@ describe('isAdmin', () => {
   it('returns false for different email', () => {
     expect(isAdmin('other@automationsystems.org', 'testing@automationsystems.org')).toBe(false);
   });
+  it('accepts any email in a comma-separated admin allowlist', () => {
+    expect(isAdmin('himanshuneb@automationsystems.org', 'testing@automationsystems.org, himanshuneb@automationsystems.org')).toBe(true);
+  });
   it('returns false for null email', () => {
     expect(isAdmin(null, 'testing@automationsystems.org')).toBe(false);
   });
