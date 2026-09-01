@@ -4,6 +4,8 @@
 **Repository:** StockLooker  
 **Purpose:** Give any future agent the shortest reliable path to understanding what was done, why, how it was verified, and what remains.
 
+**Integration:** The reviewed work was merged into `main` as `275d32a` on 2026-09-01. The temporary UI worktree was removed after merge; no Git worktrees remain besides `main`.
+
 ## Main product goal
 
 StockLooker is an authenticated internal Google Sheet lookup tool. An administrator selects exactly one searchable sheet column and one or more displayed result columns. Normal users search by the configured column and receive only the configured displayed fields, in saved order; the search column is not repeated in the result.
