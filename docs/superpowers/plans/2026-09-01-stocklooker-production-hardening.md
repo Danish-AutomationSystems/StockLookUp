@@ -4,9 +4,9 @@
 
 **Goal:** Harden the recovered StockLooker application, verify its external integrations, and release it safely to Vercel at `stocklooker.automationsystems.info`.
 
-**Architecture:** Keep the existing Next.js App Router application and server-only Google Sheets access. Make the `_config` tab hidden at the Sheets boundary, keep Google authentication on Vercel through OIDC/WIF, and perform live deployment only after local tests, build, dependency, configuration, and review gates pass.
+**Architecture:** Keep the existing Next.js App Router application and server-only Google Sheets access. Make the `_config` tab hidden at the Sheets boundary, migrate the auth gate from the deprecated middleware convention to Next.js 16’s proxy convention, keep Google authentication on Vercel through OIDC/WIF, and perform live deployment only after local tests, build, dependency, configuration, and review gates pass.
 
-**Tech Stack:** Next.js 15.5.21, React 18.3.1, TypeScript 5.9.3, NextAuth 4.24.15, Google APIs, Google Workload Identity Federation, Vercel OIDC, Tailwind CSS, Vitest, Testing Library, Vercel CLI.
+**Tech Stack:** Next.js 16.3.4, React 18.3.1, TypeScript 5.9.3, NextAuth 4.24.15, Google APIs, Google Workload Identity Federation, Vercel OIDC, Tailwind CSS, Vitest, Testing Library, Vercel CLI, Node.js 24.x.
 
 ## Global Constraints
 
@@ -17,7 +17,9 @@
 - Login remains restricted to `automationsystems.org` through the NextAuth `signIn` callback, not only Google’s `hd` hint.
 - Admin access remains restricted to the configured `ADMIN_EMAIL` through both middleware and route checks.
 - Every production-code behavior change requires a failing test before implementation and a passing focused test plus full-suite verification after implementation.
-- No major framework migration beyond the smallest audited-safe compatible Next.js release; start from the current Next 14.2.35 application and target Next 15.5.21.
+- The smallest audited-safe compatible Next.js release in the current registry is Next.js 16.3.4; keep React on 18.3.1 and do not migrate to React 19 in this task.
+- The Next.js entry-point migration is limited to renaming `middleware.ts` to `proxy.ts`, preserving the existing `isAuthorized` behavior and matcher rules.
+- TypeScript Node types must match the deployed Node 24 runtime, and jsdom must support the local Node 22.17.1 test runtime.
 - No live deployment or external configuration mutation is delegated to a subagent; the controller performs those actions after reviewed code is ready.
 - Each implementation task ends with a focused test/build check, a commit, and a review artifact; the SDD ledger is the recovery record.
 
@@ -140,17 +142,43 @@ git commit -m "fix: keep the Sheets config tab hidden"
 
 ---
 
-### Task 2: Upgrade and pin dependencies for production
+### Task 2: Upgrade dependencies and migrate middleware to the Next.js 16 proxy convention
 
 **Files:**
 - Modify: `package.json`
 - Modify: `package-lock.json`
+- Rename: `middleware.ts` to `proxy.ts`
+- Modify: `lib/__tests__/middleware.test.ts`
 
 **Interfaces:**
-- Consumes: the existing Next.js 14 application and lockfile.
-- Produces: a reproducible dependency set with Next.js `15.5.21`, React `18.3.1`, and the currently installed compatible direct dependency versions pinned instead of using `latest`.
+- Consumes: the existing Next.js 14 application, auth middleware, and lockfile.
+- Produces: a reproducible dependency set with Next.js `16.3.4`, React `18.3.1`, and compatible direct dependency versions pinned instead of using `latest`; the existing auth gate remains available from `proxy.ts`.
 
-- [ ] **Step 1: Record the dependency baseline and audit result**
+- [ ] **Step 1: Update the proxy test first**
+
+Change the test import from `@/middleware` to `@/proxy` while preserving every existing `isAuthorized` assertion. Add one assertion that the proxy module exports a callable default handler:
+
+```ts
+import proxy, { isAuthorized } from '@/proxy';
+
+it('exports the Next.js proxy handler', () => {
+  expect(typeof proxy).toBe('function');
+});
+```
+
+If the current test already imports `isAuthorized` separately, combine the imports without duplicating the symbol.
+
+- [ ] **Step 2: Run the focused test and verify the intended RED state**
+
+Run:
+
+```bash
+npm test -- lib/__tests__/middleware.test.ts
+```
+
+Expected: the test fails because `@/proxy` does not exist yet. Do not change application code before observing this failure.
+
+- [ ] **Step 3: Record the dependency baseline and audit result**
 
 Run:
 
@@ -161,18 +189,20 @@ npm audit --omit=dev --json
 
 Record only package versions and vulnerability counts in the task report. Never copy environment values, tokens, or secret contents.
 
-- [ ] **Step 2: Update direct dependencies deterministically**
+- [ ] **Step 4: Update direct dependencies and runtime-aligned types deterministically**
 
 Use exact versions for the currently installed direct dependencies, changing only the framework target and version pinning:
 
 ```bash
-npm install --save-exact next@15.5.21 react@18.3.1 react-dom@18.3.1 next-auth@4.24.15 @vercel/oidc@3.8.5 google-auth-library@11.0.2 googleapis@176.0.0
-npm install --save-dev --save-exact typescript@5.9.3 @types/node@26.4.0 @types/react@19.2.18 @types/react-dom@19.2.5 @vitejs/plugin-react@6.1.1 @testing-library/jest-dom@7.0.1 @testing-library/react@16.3.3 @testing-library/user-event@14.6.6 jsdom@30.0.1 vitest@4.1.11 autoprefixer@10.5.4 postcss@8.5.26 tailwindcss@3.4.19
+npm install --save-exact next@16.3.4 react@18.3.1 react-dom@18.3.1 next-auth@4.24.15 @vercel/oidc@3.8.5 google-auth-library@11.0.2 googleapis@176.0.0
+npm install --save-dev --save-exact typescript@5.9.3 @types/node@24.13.3 @types/react@18.3.30 @types/react-dom@18.3.7 @vitejs/plugin-react@6.1.1 @testing-library/jest-dom@7.0.1 @testing-library/react@16.3.3 @testing-library/user-event@14.6.6 jsdom@29.1.1 vitest@4.1.11 autoprefixer@10.5.4 postcss@8.5.26 tailwindcss@3.4.19
 ```
 
-Keep the existing npm scripts unchanged. Do not run `npm audit fix --force`, and do not upgrade to Next 16 in this task.
+Add an `engines` entry of `{ "node": "24.x" }` to `package.json`. Keep the existing npm scripts unchanged. Do not run `npm audit fix --force`.
 
-- [ ] **Step 3: Verify compatibility and the audit**
+Rename `middleware.ts` to `proxy.ts`. Preserve `isAuthorized` and the existing matcher array. Export the existing `withAuth` handler as the default proxy handler and ensure the named `isAuthorized` export remains available to the test.
+
+- [ ] **Step 5: Verify compatibility and the audit**
 
 Run:
 
@@ -183,13 +213,14 @@ npm run build
 npm audit --omit=dev
 ```
 
-Expected: install succeeds from the lockfile, all tests pass, the build succeeds, and the audit has no high or critical production vulnerabilities. If Next 15.5.21 exposes a compatibility failure, write a failing regression test for the affected behavior before changing application code and keep the fix in this task’s reviewed diff.
+Expected: install succeeds from the lockfile, all tests pass, the build succeeds, and the audit has no high or critical production vulnerabilities. The focused middleware test must pass through the new `proxy.ts` entry point. If the Next 16 migration exposes an application compatibility failure, write a failing regression test for the affected behavior before changing application code and keep the fix in this task’s reviewed diff.
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
-git add package.json package-lock.json
-git commit -m "chore: pin production dependencies and patch Next.js"
+git add package.json package-lock.json proxy.ts lib/__tests__/middleware.test.ts
+git rm middleware.ts
+git commit -m "chore: migrate to audited Next.js 16 dependencies"
 ```
 
 ---
