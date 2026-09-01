@@ -1,8 +1,8 @@
 # Configurable Column Mapping Verification Checkpoint
 
-**Date:** 2026-09-01  
-**Source branch:** `worktree-stocklooker-build`  
-**Feature head at checkpoint:** `9236ed3`
+**Date:** 2026-09-01
+**Source branch:** `worktree-stocklooker-build`
+**Feature head at checkpoint:** `83ce760`
 
 ## Automated verification
 
