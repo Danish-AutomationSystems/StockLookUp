@@ -25,6 +25,7 @@
 **Files:**
 - Modify: `app/globals.css`
 - Modify: `app/layout.tsx`
+- Modify: `app/login/page.tsx` (shell class only; behavior unchanged)
 - Test: `app/login/__tests__/page.test.tsx` only if a shell landmark assertion is added
 
 **Interfaces:**
@@ -33,12 +34,13 @@
 
 - [ ] **Step 1: Add a failing accessibility/shell test**
 
-Add a focused assertion to `app/login/__tests__/page.test.tsx` that the rendered page exposes a `main` landmark and a page heading. Keep the existing sign-in assertion unchanged:
+Add a focused assertion to `app/login/__tests__/page.test.tsx` that the rendered page exposes the new shell class, a `main` landmark, and a page heading. Keep the existing sign-in assertion unchanged:
 
 ```tsx
 it('renders the login page inside the application main landmark', () => {
   render(<LoginPage />);
   expect(screen.getByRole('main')).toBeInTheDocument();
+  expect(screen.getByRole('main')).toHaveClass('app-shell');
   expect(screen.getByRole('heading', { name: 'StockLooker' })).toBeInTheDocument();
 });
 ```
@@ -59,7 +61,7 @@ In `app/globals.css`, add `:root` semantic color, radius, shadow, and focus vari
 
 - [ ] **Step 4: Apply the shell to the root layout**
 
-Update `app/layout.tsx` so the body uses the shared page background and foreground classes without changing `SessionProviderWrapper` placement or metadata.
+Update `app/layout.tsx` so the body uses the shared page background and foreground classes without changing `SessionProviderWrapper` placement or metadata. Add the `app-shell` class to the login page main surface so the focused page test can verify the new shell contract.
 
 - [ ] **Step 5: Run the focused test and full type/build checks**
 
@@ -75,7 +77,7 @@ Expected: focused tests and production build pass.
 - [ ] **Step 6: Commit the foundation**
 
 ```bash
-git add app/globals.css app/layout.tsx app/login/__tests__/page.test.tsx
+git add app/globals.css app/layout.tsx app/login/page.tsx app/login/__tests__/page.test.tsx
 git commit -m "style: add StockLooker visual foundation"
 ```
 
