@@ -26,4 +26,16 @@ describe('validateConfig', () => {
     expect(result.valid).toBe(false);
     expect(result.errors).toContain('Result column "Nope" not found in sheet headers');
   });
+
+  it('rejects duplicate result columns', () => {
+    const result = validateConfig(headers, { searchColumn: 'SKU', resultColumns: ['Name', 'Name'] });
+    expect(result.valid).toBe(false);
+    expect(result.errors).toContain('Result column "Name" is duplicated');
+  });
+
+  it('rejects a result column equal to the search column', () => {
+    const result = validateConfig(headers, { searchColumn: 'SKU', resultColumns: ['SKU'] });
+    expect(result.valid).toBe(false);
+    expect(result.errors).toContain('Result column "SKU" cannot be the search column');
+  });
 });
