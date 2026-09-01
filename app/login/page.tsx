@@ -18,7 +18,7 @@ function LoginContent() {
         </p>
       )}
       <button
-        className="rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
+        className="button-primary"
         onClick={() => signIn('google', { callbackUrl: '/' })}
       >
         Sign in with Google

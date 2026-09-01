@@ -13,8 +13,10 @@ import LoginPage from '@/app/login/page';
 describe('LoginPage', () => {
   it('renders the login page inside the application main landmark', () => {
     render(<LoginPage />);
+    expect(screen.getByRole('main')).toBeInTheDocument();
     expect(screen.getByRole('main')).toHaveClass('app-shell');
     expect(screen.getByRole('heading', { name: 'StockLooker' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /sign in with google/i })).toHaveClass('button-primary');
   });
 
   it('calls signIn("google") when the button is clicked', async () => {
