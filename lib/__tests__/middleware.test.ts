@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { isAuthorized } from '@/middleware';
+import proxy, { isAuthorized } from '@/proxy';
+
+it('exports the Next.js proxy handler', () => {
+  expect(typeof proxy).toBe('function');
+});
 
 describe('isAuthorized', () => {
   it('denies access with no token', () => {
