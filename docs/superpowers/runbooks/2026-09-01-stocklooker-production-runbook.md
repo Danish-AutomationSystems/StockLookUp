@@ -17,7 +17,7 @@
 
 Run `vercel --prod` from the reviewed worktree, record the deployment URL and commit, attach `stocklooker.automationsystems.info`, and confirm the hostname resolves before smoke testing.
 
-For local validation before deployment, run `npm install` or `npm ci`, then `vercel login`, `vercel link --yes --project stocklooker --team <team-id-or-slug>`, and `vercel env pull .env.local --environment=development` before entering any local-only values. After the pull, merge any remaining local overrides into `.env.local`, then run `npm test` and `npm run build`. Start `vercel dev` in a separate terminal because it runs in the foreground. `lib/googleAuth.ts` uses `getVercelOidcToken()` from `@vercel/oidc`, so production receives the platform-provided request token and local development depends on the linked CLI-backed refresh flow rather than a committed token value.
+For local validation before deployment, run `npm install` or `npm ci`, then `vercel login`, `vercel link --yes --project stocklooker --team <team-id-or-slug>`, and `vercel env pull .env.vercel.local --environment=development`. After the pull, manually merge only the non-secret local configuration you still need into `.env.local`; do not overwrite `.env.local` with the pulled file, never commit `.env.local` or `.env.vercel.local`, and do not print or copy secret values into reports. Then run `npm test` and `npm run build`. Start `vercel dev` in a separate terminal because it runs in the foreground. `lib/googleAuth.ts` uses `getVercelOidcToken()` from `@vercel/oidc`, so production receives the platform-provided request token and local development depends on the linked CLI-backed refresh flow rather than a committed token value.
 
 ## Smoke test
 

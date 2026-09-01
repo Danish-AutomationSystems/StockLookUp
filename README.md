@@ -28,10 +28,10 @@ Use `npm ci` instead when you want a clean install from the committed lockfile.
 ```bash
 vercel login
 vercel link --yes --project stocklooker --team <team-id-or-slug>
-vercel env pull .env.local --environment=development
+vercel env pull .env.vercel.local --environment=development
 ```
 
-4. After the Vercel pull finishes, merge in any remaining local-only values from `.env.local.example` and your local setup. Treat the pulled `.env.local` as the starting point because `vercel env pull .env.local` rewrites that file.
+4. After the Vercel pull finishes, copy `.env.local.example` to `.env.local` if you have not already, then manually merge only the non-secret local configuration you still need from `.env.vercel.local` and your local setup into `.env.local`. Do not overwrite `.env.local` with the pulled file, and do not copy secret values into documentation, screenshots, or reports.
 
 The linked project metadata is stored in `.vercel/project.json`. In this repo, [lib/googleAuth.ts](lib/googleAuth.ts) calls `getVercelOidcToken()` from `@vercel/oidc`. In production, Vercel provides the request-scoped OIDC token for the function runtime. Locally, the supported workflow is to stay logged into the Vercel CLI, keep the project linked, and run through Vercel so `getVercelOidcToken()` can refresh the local OIDC token when needed.
 
@@ -48,7 +48,7 @@ npm run build
 vercel dev
 ```
 
-Do not copy a Vercel OIDC token into committed files, docs, screenshots, or Git history. If a local token expires, refresh it through the authenticated CLI and linked-project flow instead of committing a value to `.env.local.example`, `README.md`, or any source file.
+Do not commit `.env.local` or `.env.vercel.local`. Do not copy a Vercel OIDC token into committed files, docs, screenshots, Git history, or reports. If a local token expires, refresh it through the authenticated CLI and linked-project flow instead of committing a value to `.env.local.example`, `README.md`, or any source file.
 
 ## Required environment variable names
 
