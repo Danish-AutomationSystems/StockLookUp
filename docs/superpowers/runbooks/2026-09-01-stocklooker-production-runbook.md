@@ -6,6 +6,7 @@
 - Confirm `npm test`, `npm run build`, and `npm audit --omit=dev` pass.
 - Confirm the Vercel project is `automation-systems/stocklooker`.
 - Confirm the required environment variable names exist in Preview and Production; never print their values.
+- Confirm local operator access uses an authenticated Vercel CLI session plus linked `.vercel/project.json`; do not copy a Vercel OIDC token into committed files.
 - Confirm Vercel OIDC federation, Google OAuth callback configuration, GCP WIF trust, service-account Sheet access, and DNS.
 
 ## Required environment variable names
@@ -15,6 +16,8 @@
 ## Deployment
 
 Run `vercel --prod` from the reviewed worktree, record the deployment URL and commit, attach `stocklooker.automationsystems.info`, and confirm the hostname resolves before smoke testing.
+
+For local validation before deployment, use `vercel login`, `vercel link --yes --project stocklooker --team <team-id-or-slug>`, `vercel env pull .env.local --environment=development`, and `vercel dev`. `lib/googleAuth.ts` uses `getVercelOidcToken()` from `@vercel/oidc`, so production receives the platform-provided request token and local development depends on the linked CLI-backed refresh flow rather than a committed token value.
 
 ## Smoke test
 
