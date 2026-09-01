@@ -180,7 +180,7 @@ export default function AdminPage() {
       }
 
       const details = Array.isArray(body?.details)
-        ? body.details.filter((detail): detail is string => typeof detail === 'string')
+        ? body.details.filter((detail: unknown): detail is string => typeof detail === 'string')
         : [];
       const errorMessage = typeof body?.error === 'string' ? body.error : 'Request failed';
 
