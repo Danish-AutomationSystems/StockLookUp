@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth';
 import { getSheetsClient, getDataSheetTitle, getHeadersAndRows, getConfig } from '@/lib/sheets';
 import { findMatchingRow } from '@/lib/searchLogic';
 import { requireEnv } from '@/lib/googleAuth';
+import { logServerFailure } from '@/lib/safeLogging';
 
 export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -25,7 +26,7 @@ export async function GET(req: NextRequest) {
     if (!result) return NextResponse.json({ error: 'No match found' }, { status: 404 });
     return NextResponse.json({ result });
   } catch (err) {
-    console.error('Search failed:', err);
+    logServerFailure('search.GET', err);
     return NextResponse.json({ error: 'Search temporarily unavailable' }, { status: 503 });
   }
 }

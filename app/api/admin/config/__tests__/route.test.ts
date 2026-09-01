@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 vi.mock('next-auth', () => ({ getServerSession: vi.fn() }));
 vi.mock('@/lib/sheets', () => ({
@@ -20,6 +20,16 @@ function makePostRequest(body: unknown) {
     body: JSON.stringify(body),
   });
 }
+
+let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
+
+beforeEach(() => {
+  consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+});
+
+afterEach(() => {
+  consoleErrorSpy.mockRestore();
+});
 
 describe('GET /api/admin/config', () => {
   beforeEach(() => {
@@ -71,6 +81,32 @@ describe('POST /api/admin/config', () => {
     expect(res.status).toBe(400);
   });
 
+  it('returns 400 with duplicate result column details and does not save the config', async () => {
+    (getServerSession as any).mockResolvedValue({ user: { email: 'testing@automationsystems.org', isAdmin: true } });
+    (getDataSheetTitle as any).mockResolvedValue('Products');
+    (getHeadersAndRows as any).mockResolvedValue({ headers: ['SKU', 'Name'], rows: [] });
+    const res = await POST(makePostRequest({ searchColumn: 'SKU', resultColumns: ['Name', 'Name'] }));
+    expect(res.status).toBe(400);
+    await expect(res.json()).resolves.toEqual({
+      error: 'Invalid configuration',
+      details: ['Result column "Name" is duplicated'],
+    });
+    expect(setConfig).not.toHaveBeenCalled();
+  });
+
+  it('returns 400 with search/display overlap details and does not save the config', async () => {
+    (getServerSession as any).mockResolvedValue({ user: { email: 'testing@automationsystems.org', isAdmin: true } });
+    (getDataSheetTitle as any).mockResolvedValue('Products');
+    (getHeadersAndRows as any).mockResolvedValue({ headers: ['SKU', 'Name'], rows: [] });
+    const res = await POST(makePostRequest({ searchColumn: 'SKU', resultColumns: ['SKU', 'Name'] }));
+    expect(res.status).toBe(400);
+    await expect(res.json()).resolves.toEqual({
+      error: 'Invalid configuration',
+      details: ['Result column "SKU" cannot be the search column'],
+    });
+    expect(setConfig).not.toHaveBeenCalled();
+  });
+
   it('saves a valid config for an admin', async () => {
     (getServerSession as any).mockResolvedValue({ user: { email: 'testing@automationsystems.org', isAdmin: true } });
     (getDataSheetTitle as any).mockResolvedValue('Products');
@@ -116,19 +152,57 @@ describe('POST /api/admin/config', () => {
 
   it('returns 503 (not the raw error message) when the Sheets API throws during POST', async () => {
     (getServerSession as any).mockResolvedValue({ user: { email: 'testing@automationsystems.org', isAdmin: true } });
-    (getDataSheetTitle as any).mockRejectedValue(new Error('internal sheets failure details'));
+    const err = Object.assign(new Error('internal sheets failure details subject_token=abc123'), {
+      authorization: 'Bearer secret-token',
+      response: {
+        status: 503,
+        data: {
+          error: {
+            message: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.payload.signature',
+          },
+        },
+      },
+    });
+    (getDataSheetTitle as any).mockRejectedValue(err);
     const res = await POST(makePostRequest({ searchColumn: 'SKU', resultColumns: ['Name'] }));
     expect(res.status).toBe(503);
     const body = await res.json();
     expect(JSON.stringify(body)).not.toContain('internal sheets failure details');
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      'Server failure',
+      expect.objectContaining({ operation: 'admin.config.POST', classification: 'error', status: 503 })
+    );
+    const serializedCalls = JSON.stringify(consoleErrorSpy.mock.calls);
+    expect(serializedCalls).not.toContain('subject_token');
+    expect(serializedCalls).not.toContain('Bearer secret-token');
+    expect(serializedCalls).not.toContain('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.payload.signature');
   });
 
   it('returns 503 (not the raw error message) when the Sheets API throws during GET', async () => {
     (getServerSession as any).mockResolvedValue({ user: { email: 'testing@automationsystems.org', isAdmin: true } });
-    (getDataSheetTitle as any).mockRejectedValue(new Error('internal sheets failure details'));
+    const err = Object.assign(new Error('internal sheets failure details authorization=secret'), {
+      subject_token: 'abc123',
+      response: {
+        status: 503,
+        data: {
+          error: {
+            message: 'Bearer secret-token',
+          },
+        },
+      },
+    });
+    (getDataSheetTitle as any).mockRejectedValue(err);
     const res = await GET();
     expect(res.status).toBe(503);
     const body = await res.json();
     expect(JSON.stringify(body)).not.toContain('internal sheets failure details');
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      'Server failure',
+      expect.objectContaining({ operation: 'admin.config.GET', classification: 'error', status: 503 })
+    );
+    const serializedCalls = JSON.stringify(consoleErrorSpy.mock.calls);
+    expect(serializedCalls).not.toContain('subject_token');
+    expect(serializedCalls).not.toContain('authorization=secret');
+    expect(serializedCalls).not.toContain('Bearer secret-token');
   });
 });

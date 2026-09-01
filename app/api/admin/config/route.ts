@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth';
 import { getSheetsClient, getDataSheetTitle, getHeadersAndRows, getConfig, setConfig } from '@/lib/sheets';
 import { validateConfig } from '@/lib/configValidation';
 import { requireEnv } from '@/lib/googleAuth';
+import { logServerFailure } from '@/lib/safeLogging';
 
 async function requireAdminSession() {
   const session = await getServerSession(authOptions);
@@ -31,7 +32,7 @@ export async function GET() {
     const config = await getConfig(client, spreadsheetId);
     return NextResponse.json({ headers, config });
   } catch (err) {
-    console.error('Admin config GET failed:', err);
+    logServerFailure('admin.config.GET', err);
     return NextResponse.json({ error: 'Admin config temporarily unavailable' }, { status: 503 });
   }
 }
@@ -65,7 +66,7 @@ export async function POST(req: NextRequest) {
     await setConfig(client, spreadsheetId, body);
     return NextResponse.json({ success: true });
   } catch (err) {
-    console.error('Admin config POST failed:', err);
+    logServerFailure('admin.config.POST', err);
     return NextResponse.json({ error: 'Admin config temporarily unavailable' }, { status: 503 });
   }
 }

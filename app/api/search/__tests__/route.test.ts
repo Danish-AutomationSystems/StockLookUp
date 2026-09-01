@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 vi.mock('next-auth', () => ({ getServerSession: vi.fn() }));
 vi.mock('@/lib/sheets', () => ({
@@ -18,6 +18,16 @@ function makeRequest(query: string | null) {
   if (query !== null) url.searchParams.set('q', query);
   return new NextRequest(url);
 }
+
+let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
+
+beforeEach(() => {
+  consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+});
+
+afterEach(() => {
+  consoleErrorSpy.mockRestore();
+});
 
 describe('GET /api/search', () => {
   beforeEach(() => {
@@ -69,10 +79,29 @@ describe('GET /api/search', () => {
 
   it('returns 503 (not the raw error message) when the Sheets API throws', async () => {
     (getServerSession as any).mockResolvedValue({ user: { email: 'sales@automationsystems.org' } });
-    (getConfig as any).mockRejectedValue(new Error('internal sheets failure details'));
+    const err = Object.assign(new Error('internal sheets failure details subject_token=abc123'), {
+      authorization: 'Bearer secret-token',
+      response: {
+        status: 503,
+        data: {
+          error: {
+            message: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.payload.signature',
+          },
+        },
+      },
+    });
+    (getConfig as any).mockRejectedValue(err);
     const res = await GET(makeRequest('abc'));
     expect(res.status).toBe(503);
     const body = await res.json();
     expect(JSON.stringify(body)).not.toContain('internal sheets failure details');
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      'Server failure',
+      expect.objectContaining({ operation: 'search.GET', classification: 'error', status: 503 })
+    );
+    const serializedCalls = JSON.stringify(consoleErrorSpy.mock.calls);
+    expect(serializedCalls).not.toContain('subject_token');
+    expect(serializedCalls).not.toContain('Bearer secret-token');
+    expect(serializedCalls).not.toContain('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.payload.signature');
   });
 });
