@@ -58,6 +58,20 @@ These checks require an authorized Google Cloud operator. Do not guess or silent
 7. The admin can save a valid column mapping.
 8. Logout ends the session.
 
+## UI release checklist
+
+- [ ] Check `/login`, `/`, and `/admin` at 375px, 768px, 1024px, 1440px, and narrow landscape widths.
+- [ ] Traverse every interactive control with the keyboard; confirm order is usable and `:focus-visible` remains clearly visible.
+- [ ] Exercise loading, success, error, empty, and disabled states, including failed search, failed admin load/save, no-match search, and the disabled final Remove control.
+- [ ] Confirm `document.documentElement.scrollWidth` and `document.body.scrollWidth` do not exceed the viewport at each target size.
+- [ ] Repeat the checks with reduced motion enabled and confirm transitions/animations are effectively suppressed.
+- [ ] Confirm the admin save payload, search result projection, sign-in call, and admin-only conditional remain unchanged from the reviewed source.
+- [ ] Explicit no-cost guardrail: UI verification and release work must not add billable infrastructure, paid APIs, upgraded quotas, service-account keys, or new managed resources.
+
 ## Rollback
 
 Use the last known-good Vercel deployment or redeploy a reviewed commit. For source recovery, create a separate worktree from `codex/baseline-stocklooker-source-94684f6`; never delete the baseline tag.
+
+## Cost guardrail
+
+Production troubleshooting must not introduce billable infrastructure, paid APIs, upgraded quotas, service-account keys, or new managed resources. Keep changes limited to the existing Vercel deployment, existing Google Cloud project, existing service account, existing Sheets API, and narrowly scoped IAM permissions. Do not enable billing or request a billing-account change.
