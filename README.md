@@ -15,8 +15,7 @@ The browser never receives service-account credentials, Sheet secrets, or direct
 ## Local setup
 
 1. Copy `.env.local.example` to `.env.local`.
-2. Fill in the required environment variable names with local development values.
-3. Install dependencies:
+2. Install dependencies:
 
 ```bash
 npm install
@@ -24,13 +23,15 @@ npm install
 
 Use `npm ci` instead when you want a clean install from the committed lockfile.
 
-4. Authenticate and link the local checkout to the Vercel project before testing Google Sheets access through Workload Identity Federation:
+3. Authenticate and link the local checkout to the Vercel project before testing Google Sheets access through Workload Identity Federation:
 
 ```bash
 vercel login
 vercel link --yes --project stocklooker --team <team-id-or-slug>
 vercel env pull .env.local --environment=development
 ```
+
+4. After the Vercel pull finishes, merge in any remaining local-only values from `.env.local.example` and your local setup. Treat the pulled `.env.local` as the starting point because `vercel env pull .env.local` rewrites that file.
 
 The linked project metadata is stored in `.vercel/project.json`. In this repo, [lib/googleAuth.ts](lib/googleAuth.ts) calls `getVercelOidcToken()` from `@vercel/oidc`. In production, Vercel provides the request-scoped OIDC token for the function runtime. Locally, the supported workflow is to stay logged into the Vercel CLI, keep the project linked, and run through Vercel so `getVercelOidcToken()` can refresh the local OIDC token when needed.
 
