@@ -67,20 +67,60 @@ describe('getHeadersAndRows', () => {
 describe('ensureConfigSheet', () => {
   it('does not create a sheet when _config already exists', async () => {
     const client = makeMockClient({
-      get: vi.fn().mockResolvedValue({ data: { sheets: [{ properties: { title: '_config' } }] } }),
+      get: vi.fn().mockResolvedValue({
+        data: { sheets: [{ properties: { sheetId: 42, title: '_config', hidden: true } }] },
+      }),
     });
     await ensureConfigSheet(client, 'sheet-id');
     expect(client.spreadsheets.batchUpdate).not.toHaveBeenCalled();
   });
 
+  it('hides an existing visible _config sheet', async () => {
+    const client = makeMockClient({
+      get: vi.fn().mockResolvedValue({
+        data: { sheets: [{ properties: { sheetId: 42, title: '_config', hidden: false } }] },
+      }),
+    });
+
+    await ensureConfigSheet(client, 'sheet-id');
+
+    expect(client.spreadsheets.batchUpdate).toHaveBeenCalledWith({
+      spreadsheetId: 'sheet-id',
+      requestBody: {
+        requests: [
+          {
+            updateSheetProperties: {
+              properties: { sheetId: 42, hidden: true },
+              fields: 'hidden',
+            },
+          },
+        ],
+      },
+    });
+  });
+
+  it('does not update an already hidden _config sheet', async () => {
+    const client = makeMockClient({
+      get: vi.fn().mockResolvedValue({
+        data: { sheets: [{ properties: { sheetId: 42, title: '_config', hidden: true } }] },
+      }),
+    });
+
+    await ensureConfigSheet(client, 'sheet-id');
+
+    expect(client.spreadsheets.batchUpdate).not.toHaveBeenCalled();
+  });
+
   it('creates a _config sheet when missing', async () => {
     const client = makeMockClient({
-      get: vi.fn().mockResolvedValue({ data: { sheets: [{ properties: { title: 'Products' } }] } }),
+      get: vi.fn().mockResolvedValue({
+        data: { sheets: [{ properties: { sheetId: 7, title: 'Products' } }] },
+      }),
     });
     await ensureConfigSheet(client, 'sheet-id');
     expect(client.spreadsheets.batchUpdate).toHaveBeenCalledWith({
       spreadsheetId: 'sheet-id',
-      requestBody: { requests: [{ addSheet: { properties: { title: '_config' } } }] },
+      requestBody: { requests: [{ addSheet: { properties: { title: '_config', hidden: true } } }] },
     });
   });
 });

@@ -50,12 +50,30 @@ export async function ensureConfigSheet(
   spreadsheetId: string
 ): Promise<void> {
   const meta = await client.spreadsheets.get({ spreadsheetId });
-  const exists = (meta.data.sheets ?? []).some((s) => s.properties?.title === CONFIG_SHEET_TITLE);
-  if (exists) return;
+  const configSheet = (meta.data.sheets ?? []).find((s) => s.properties?.title === CONFIG_SHEET_TITLE);
+  if (configSheet) {
+    if (configSheet.properties?.hidden === true) return;
+    const sheetId = configSheet.properties?.sheetId;
+    if (typeof sheetId !== 'number') return;
+    await client.spreadsheets.batchUpdate({
+      spreadsheetId,
+      requestBody: {
+        requests: [
+          {
+            updateSheetProperties: {
+              properties: { sheetId, hidden: true },
+              fields: 'hidden',
+            },
+          },
+        ],
+      },
+    });
+    return;
+  }
   await client.spreadsheets.batchUpdate({
     spreadsheetId,
     requestBody: {
-      requests: [{ addSheet: { properties: { title: CONFIG_SHEET_TITLE } } }],
+      requests: [{ addSheet: { properties: { title: CONFIG_SHEET_TITLE, hidden: true } } }],
     },
   });
 }
