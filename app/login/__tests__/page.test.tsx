@@ -11,6 +11,12 @@ vi.mock('next/navigation', () => ({
 import LoginPage from '@/app/login/page';
 
 describe('LoginPage', () => {
+  it('renders the login page inside the application main landmark', () => {
+    render(<LoginPage />);
+    expect(screen.getByRole('main')).toHaveClass('app-shell');
+    expect(screen.getByRole('heading', { name: 'StockLooker' })).toBeInTheDocument();
+  });
+
   it('calls signIn("google") when the button is clicked', async () => {
     render(<LoginPage />);
     await userEvent.click(screen.getByRole('button', { name: /sign in with google/i }));
