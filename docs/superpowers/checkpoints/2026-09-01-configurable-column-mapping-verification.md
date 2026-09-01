@@ -2,7 +2,7 @@
 
 **Date:** 2026-09-01
 **Source branch:** `worktree-stocklooker-build`
-**Feature head at checkpoint:** `83ce760`
+**Feature head at checkpoint:** `a593368`
 
 ## Automated verification
 
@@ -23,7 +23,7 @@
 
 ## Production status
 
-The deployed custom domain is `https://stocklooker.automationsystems.info`. Unauthenticated redirect and domain/DNS checks previously passed. Authenticated Sheets-backed smoke tests remain pending because the production Google Workload Identity Federation audience mismatch requires an authorized Google Cloud operator to verify/correct the provider configuration. No guessed Google Cloud change was made.
+The deployed custom domain is `https://stocklooker.automationsystems.info`. Deployment `dpl_5BUDWBB4uK1W5CFffpYDQaw5g8Ai` is READY and aliases the custom domain. The Google Workload Identity Federation provider was corrected/confirmed by the authorized operator, and the public admin route now reaches the application login redirect. Authenticated Sheets-backed smoke tests require the user to sign in with the company Google account; no credentials were entered by the agent.
 
 ## Rollback
 
