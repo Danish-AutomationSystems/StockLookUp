@@ -18,7 +18,7 @@ export default function SearchForm({
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-3 sm:flex-row sm:items-end">
-      <label htmlFor="search-query" className="flex-1 text-sm font-medium text-gray-700">
+      <label htmlFor="search-query" className="flex-1 text-base font-medium text-gray-700 sm:text-sm">
         <span className="mb-1 block">Search</span>
         <input
           id="search-query"

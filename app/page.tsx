@@ -36,14 +36,14 @@ export default function HomePage() {
     <main className="app-shell">
       <header className="app-header">
         <div className="app-content flex items-center justify-between py-4">
-          <Link href="/" className="app-brand text-lg">StockLooker</Link>
-          <div className="flex items-center gap-3 text-sm">
+          <Link href="/" className="link-target app-brand text-lg">StockLooker</Link>
+          <div className="flex items-center gap-3 text-base sm:text-sm">
           {(session?.user as any)?.isAdmin && (
-            <Link href="/admin" className="font-medium text-[var(--color-blue)] hover:text-[var(--color-blue-dark)] hover:underline">
+            <Link href="/admin" className="link-target font-medium text-[var(--color-blue)] hover:text-[var(--color-blue-dark)] hover:underline">
               Admin
             </Link>
           )}
-          <button onClick={() => signOut()} className="button-secondary text-sm">
+          <button onClick={() => signOut()} className="button-secondary text-base sm:text-sm">
             Sign out
           </button>
           </div>
@@ -55,7 +55,7 @@ export default function HomePage() {
           <h1 id="search-heading" className="mt-2 text-2xl font-semibold tracking-tight text-[var(--color-navy)] sm:text-3xl">
             Find a stock record
           </h1>
-          <p className="mt-2 max-w-2xl text-sm text-[var(--color-muted)] sm:text-base">
+          <p className="mt-2 max-w-2xl text-base text-[var(--color-muted)]">
             Search the connected inventory sheet by entering a stock value below.
           </p>
           <div className="mt-6">

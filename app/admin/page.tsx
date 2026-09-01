@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 
 function initializeResultColumns(
@@ -43,6 +43,8 @@ export default function AdminPage() {
   const [status, setStatus] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const mappingVersionRef = useRef(0);
+  const saveRequestRef = useRef(0);
 
   async function loadConfiguration() {
     setLoading(true);
@@ -78,11 +80,18 @@ export default function AdminPage() {
     void loadConfiguration();
   }, []);
 
+  function markMappingEdited() {
+    mappingVersionRef.current += 1;
+    setStatus(null);
+  }
+
   function updateResultColumn(index: number, value: string) {
+    markMappingEdited();
     setResultColumns((prev) => prev.map((column, columnIndex) => (columnIndex === index ? value : column)));
   }
 
   function addResultColumnRow() {
+    markMappingEdited();
     setResultColumns((prev) => [...prev, '']);
     setRowKeys((prev) => [...prev, nextRowKey]);
     setNextRowKey((prev) => prev + 1);
@@ -93,6 +102,7 @@ export default function AdminPage() {
       return;
     }
 
+    markMappingEdited();
     setResultColumns((prev) => prev.filter((_, columnIndex) => columnIndex !== index));
     setRowKeys((prev) => prev.filter((_, rowIndex) => rowIndex !== index));
   }
@@ -102,6 +112,7 @@ export default function AdminPage() {
     const filteredKeys = rowKeys.filter((_, index) => resultColumns[index] !== value);
     const shouldRestoreEmptyRow = filteredColumns.length === 0;
 
+    markMappingEdited();
     setSearchColumn(value);
     setResultColumns(shouldRestoreEmptyRow ? [''] : filteredColumns);
     setRowKeys(shouldRestoreEmptyRow ? [nextRowKey] : filteredKeys);
@@ -172,6 +183,12 @@ export default function AdminPage() {
       return;
     }
 
+    const requestId = saveRequestRef.current + 1;
+    saveRequestRef.current = requestId;
+    const mappingVersion = mappingVersionRef.current;
+    const canReportCompletion = () =>
+      saveRequestRef.current === requestId && mappingVersionRef.current === mappingVersion;
+
     try {
       const res = await fetch('/api/admin/config', {
         method: 'POST',
@@ -179,6 +196,10 @@ export default function AdminPage() {
         body: JSON.stringify({ searchColumn, resultColumns }),
       });
       const body = await res.json();
+      if (!canReportCompletion()) {
+        return;
+      }
+
       if (res.ok) {
         setStatus('Saved.');
         return;
@@ -191,7 +212,9 @@ export default function AdminPage() {
 
       setStatus(`Error: ${details.length > 0 ? details.join(', ') : errorMessage}`);
     } catch {
-      setStatus('Network error, try again.');
+      if (canReportCompletion()) {
+        setStatus('Network error, try again.');
+      }
     }
   }
 
@@ -204,7 +227,7 @@ export default function AdminPage() {
             <h1 className="mt-2 text-2xl font-semibold tracking-tight text-[var(--color-navy)]">
               Admin: Column Mapping
             </h1>
-            <p className="mt-2 text-sm text-[var(--color-muted)]">Loading configuration...</p>
+            <p className="mt-2 text-base text-[var(--color-muted)] sm:text-sm">Loading configuration...</p>
             <div className="mt-6 space-y-4" aria-hidden="true">
               <div className="h-11 animate-pulse rounded bg-slate-100" />
               <div className="h-32 animate-pulse rounded bg-slate-100" />
@@ -227,7 +250,7 @@ export default function AdminPage() {
                   Admin: Column Mapping
                 </h1>
               </div>
-              <Link href="/" className="font-medium text-[var(--color-blue)] hover:text-[var(--color-blue-dark)] hover:underline">
+              <Link href="/" className="link-target font-medium text-[var(--color-blue)] hover:text-[var(--color-blue-dark)] hover:underline">
             Back to search
               </Link>
             </div>
@@ -251,7 +274,7 @@ export default function AdminPage() {
               Admin: Column Mapping
             </h1>
           </div>
-          <Link href="/" className="font-medium text-[var(--color-blue)] hover:text-[var(--color-blue-dark)] hover:underline">
+          <Link href="/" className="link-target font-medium text-[var(--color-blue)] hover:text-[var(--color-blue-dark)] hover:underline">
             Back to search
           </Link>
         </div>
@@ -261,11 +284,11 @@ export default function AdminPage() {
             <h2 id="search-mapping-heading" className="text-lg font-semibold text-[var(--color-navy)]">
               What can be searched
             </h2>
-            <p className="mt-1 text-sm text-[var(--color-muted)]">
+            <p className="mt-1 text-base text-[var(--color-muted)] sm:text-sm">
               Choose the sheet column admins can search by.
             </p>
             <div className="mt-5">
-              <label htmlFor="searchColumn" className="mb-2 block text-sm font-medium">
+              <label htmlFor="searchColumn" className="mb-2 block text-base font-medium sm:text-sm">
                 Search column
               </label>
               <select
@@ -289,7 +312,7 @@ export default function AdminPage() {
             <h2 id="display-mapping-heading" className="text-lg font-semibold text-[var(--color-navy)]">
               What is displayed
             </h2>
-            <p className="mt-1 text-sm text-[var(--color-muted)]">
+            <p className="mt-1 text-base text-[var(--color-muted)] sm:text-sm">
               Choose the sheet columns shown with each search result.
             </p>
             <fieldset className="mt-5">
@@ -297,7 +320,7 @@ export default function AdminPage() {
               <div className="space-y-3">
                 {resultColumns.map((column, index) => (
                   <div key={rowKeys[index] ?? index} className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-end">
-                    <label className="flex-1 text-sm">
+                    <label className="flex-1 text-base sm:text-sm">
                       <span className="mb-2 block font-medium">Displayed column {index + 1}</span>
                       <select
                         aria-label={`Displayed column ${index + 1}`}
@@ -318,14 +341,14 @@ export default function AdminPage() {
                       aria-label={`Remove displayed column ${index + 1}`}
                       onClick={() => removeResultColumnRow(index)}
                       disabled={resultColumns.length === 1}
-                      className="button-secondary shrink-0 text-sm disabled:cursor-not-allowed disabled:opacity-50"
+                      className="button-secondary shrink-0 text-base disabled:cursor-not-allowed disabled:opacity-50 sm:text-sm"
                     >
                       Remove
                     </button>
                   </div>
                 ))}
               </div>
-              <button type="button" onClick={addResultColumnRow} className="button-secondary mt-4 text-sm">
+              <button type="button" onClick={addResultColumnRow} className="button-secondary mt-4 text-base sm:text-sm">
                 Add display column
               </button>
             </fieldset>

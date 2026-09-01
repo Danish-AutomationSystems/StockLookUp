@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import AdminPage from '@/app/admin/page';
 
@@ -15,6 +15,15 @@ function mockJsonResponse(body: unknown, ok = true): MockResponse {
   };
 }
 
+function createDeferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((resolvePromise) => {
+    resolve = resolvePromise;
+  });
+
+  return { promise, resolve };
+}
+
 function setupFetchMock({
   getBody = {
     headers: ['SKU', 'Name', 'Price', 'Color'],
@@ -23,7 +32,7 @@ function setupFetchMock({
   postResponse = mockJsonResponse({ success: true }),
 }: {
   getBody?: unknown;
-  postResponse?: MockResponse;
+  postResponse?: MockResponse | Promise<MockResponse>;
 } = {}) {
   const fetchMock = vi.fn().mockImplementation((url: string, options?: RequestInit) => {
     if (url !== '/api/admin/config') {
@@ -65,6 +74,14 @@ describe('AdminPage', () => {
     expect(screen.getByRole('heading', { name: /column mapping/i })).toBeInTheDocument();
     expect(screen.getByText(/what can be searched/i)).toBeInTheDocument();
     expect(screen.getByText(/what is displayed/i)).toBeInTheDocument();
+  });
+
+  it('uses the shared 44px target class for back navigation', async () => {
+    setupFetchMock();
+    render(<AdminPage />);
+    await waitForPageToLoad();
+
+    expect(screen.getByRole('link', { name: 'Back to search' })).toHaveClass('link-target');
   });
 
   it('loads one search select and one displayed select, then lets admins add and remove displayed rows', async () => {
@@ -151,6 +168,47 @@ describe('AdminPage', () => {
     });
 
     expect(await screen.findByText('Saved.')).toBeInTheDocument();
+  });
+
+  it('clears Saved. after the saved search or display mapping is edited', async () => {
+    setupFetchMock();
+    const user = userEvent.setup();
+
+    render(<AdminPage />);
+    await waitForPageToLoad();
+
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    expect(await screen.findByText('Saved.')).toBeInTheDocument();
+
+    await user.selectOptions(getDisplayedColumnSelect(1), 'Price');
+    expect(screen.queryByText('Saved.')).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    expect(await screen.findByText('Saved.')).toBeInTheDocument();
+
+    await user.selectOptions(screen.getByLabelText('Search column'), 'Color');
+    expect(screen.queryByText('Saved.')).not.toBeInTheDocument();
+  });
+
+  it('does not report an in-flight save as successful after the mapping changes', async () => {
+    const postResponse = createDeferred<MockResponse>();
+    const fetchMock = setupFetchMock({ postResponse: postResponse.promise });
+    const user = userEvent.setup();
+
+    render(<AdminPage />);
+    await waitForPageToLoad();
+
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+
+    await user.selectOptions(getDisplayedColumnSelect(1), 'Price');
+
+    await act(async () => {
+      postResponse.resolve(mockJsonResponse({ success: true }));
+      await postResponse.promise;
+    });
+
+    expect(screen.queryByText('Saved.')).not.toBeInTheDocument();
   });
 
   it('rejects save while a displayed row is empty', async () => {
