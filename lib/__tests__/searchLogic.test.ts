@@ -13,6 +13,17 @@ describe('findMatchingRow', () => {
     expect(result).toEqual({ Name: 'Widget', Price: '9.99' });
   });
 
+  it('returns only configured result columns in persisted order', () => {
+    const result = findMatchingRow(
+      headers,
+      rows,
+      { searchColumn: 'SKU', resultColumns: ['Price', 'Name'] },
+      'ABC123'
+    );
+    expect(result).toEqual({ Price: '9.99', Name: 'Widget' });
+    expect(result).not.toHaveProperty('SKU');
+  });
+
   it('is case-insensitive and trims whitespace', () => {
     const result = findMatchingRow(headers, rows, { searchColumn: 'SKU', resultColumns: ['Name'] }, '  abc123  ');
     expect(result).toEqual({ Name: 'Widget' });

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { getSheetsClient, getDataSheetTitle, getHeadersAndRows, getConfig } from '@/lib/sheets';
+import { validateConfig } from '@/lib/configValidation';
 import { findMatchingRow } from '@/lib/searchLogic';
 import { requireEnv } from '@/lib/googleAuth';
 import { logServerFailure } from '@/lib/safeLogging';
@@ -21,6 +22,10 @@ export async function GET(req: NextRequest) {
 
     const sheetTitle = await getDataSheetTitle(client, spreadsheetId);
     const { headers, rows } = await getHeadersAndRows(client, spreadsheetId, sheetTitle);
+    const validation = validateConfig(headers, config);
+    if (!validation.valid) {
+      return NextResponse.json({ error: 'Search configuration is invalid' }, { status: 503 });
+    }
     const result = findMatchingRow(headers, rows, config, query);
 
     if (!result) return NextResponse.json({ error: 'No match found' }, { status: 404 });

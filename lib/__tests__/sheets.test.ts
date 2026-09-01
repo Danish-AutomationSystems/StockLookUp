@@ -192,6 +192,22 @@ describe('setConfig', () => {
     });
   });
 
+  it('preserves resultColumns order in the unchanged _config JSON cell format', async () => {
+    const client = makeMockClient();
+    await setConfig(client, 'sheet-id', { searchColumn: 'SKU', resultColumns: ['Price', 'Name'] });
+    expect(client.spreadsheets.values.update).toHaveBeenCalledWith({
+      spreadsheetId: 'sheet-id',
+      range: "'_config'!A1:B2",
+      valueInputOption: 'RAW',
+      requestBody: {
+        values: [
+          ['searchColumn', 'resultColumns'],
+          ['SKU', '["Price","Name"]'],
+        ],
+      },
+    });
+  });
+
   it('preserves a comma-containing header when round-tripped through JSON encoding', async () => {
     const client = makeMockClient();
     await setConfig(client, 'sheet-id', { searchColumn: 'SKU', resultColumns: ['Price, USD'] });

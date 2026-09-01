@@ -65,16 +65,30 @@ describe('GET /api/search', () => {
 
   it('returns 200 with the matched result', async () => {
     (getServerSession as any).mockResolvedValue({ user: { email: 'sales@automationsystems.org' } });
-    (getConfig as any).mockResolvedValue({ searchColumn: 'SKU', resultColumns: ['Name'] });
+    (getConfig as any).mockResolvedValue({ searchColumn: 'SKU', resultColumns: ['Price', 'Name'] });
+    (getDataSheetTitle as any).mockResolvedValue('Products');
+    (getHeadersAndRows as any).mockResolvedValue({
+      headers: ['SKU', 'Name', 'Price'],
+      rows: [['ABC123', 'Widget', '9.99']],
+    });
+    const res = await GET(makeRequest('ABC123'));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body).toEqual({ result: { Price: '9.99', Name: 'Widget' } });
+    expect(body.result).not.toHaveProperty('SKU');
+  });
+
+  it('returns a safe configuration error when the persisted config is stale', async () => {
+    (getServerSession as any).mockResolvedValue({ user: { email: 'sales@automationsystems.org' } });
+    (getConfig as any).mockResolvedValue({ searchColumn: 'SKU', resultColumns: ['Price', 'Name'] });
     (getDataSheetTitle as any).mockResolvedValue('Products');
     (getHeadersAndRows as any).mockResolvedValue({
       headers: ['SKU', 'Name'],
       rows: [['ABC123', 'Widget']],
     });
     const res = await GET(makeRequest('ABC123'));
-    expect(res.status).toBe(200);
-    const body = await res.json();
-    expect(body).toEqual({ result: { Name: 'Widget' } });
+    expect(res.status).toBe(503);
+    await expect(res.json()).resolves.toEqual({ error: 'Search configuration is invalid' });
   });
 
   it('returns 503 (not the raw error message) when the Sheets API throws', async () => {
