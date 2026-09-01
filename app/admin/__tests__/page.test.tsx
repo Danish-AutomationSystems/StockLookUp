@@ -58,6 +58,15 @@ describe('AdminPage', () => {
     vi.restoreAllMocks();
   });
 
+  it('exposes mapping guidance and a status region', async () => {
+    setupFetchMock();
+    render(<AdminPage />);
+    await waitForPageToLoad();
+    expect(screen.getByRole('heading', { name: /column mapping/i })).toBeInTheDocument();
+    expect(screen.getByText(/what can be searched/i)).toBeInTheDocument();
+    expect(screen.getByText(/what is displayed/i)).toBeInTheDocument();
+  });
+
   it('loads one search select and one displayed select, then lets admins add and remove displayed rows', async () => {
     setupFetchMock();
     const user = userEvent.setup();

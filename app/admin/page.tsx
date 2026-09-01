@@ -44,33 +44,38 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
+  async function loadConfiguration() {
+    setLoading(true);
+    setLoadError(null);
+
+    try {
+      const res = await fetch('/api/admin/config');
+      if (!res.ok) {
+        throw new Error('Failed to load configuration');
+      }
+
+      const body = await res.json();
+      const nextHeaders = body.headers ?? [];
+      const nextSearchColumn = body.config?.searchColumn ?? '';
+      const initialRows = initializeResultColumns(
+        nextHeaders,
+        nextSearchColumn,
+        body.config?.resultColumns
+      );
+      setHeaders(nextHeaders);
+      setSearchColumn(nextSearchColumn);
+      setResultColumns(initialRows);
+      setRowKeys(buildRowKeys(initialRows.length));
+      setNextRowKey(initialRows.length);
+    } catch {
+      setLoadError('Failed to load configuration. Refresh to try again.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
   useEffect(() => {
-    fetch('/api/admin/config')
-      .then((res) => {
-        if (!res.ok) {
-          throw new Error('Failed to load configuration');
-        }
-        return res.json();
-      })
-      .then((body) => {
-        const nextHeaders = body.headers ?? [];
-        const nextSearchColumn = body.config?.searchColumn ?? '';
-        const initialRows = initializeResultColumns(
-          nextHeaders,
-          nextSearchColumn,
-          body.config?.resultColumns
-        );
-        setHeaders(nextHeaders);
-        setSearchColumn(nextSearchColumn);
-        setResultColumns(initialRows);
-        setRowKeys(buildRowKeys(initialRows.length));
-        setNextRowKey(initialRows.length);
-        setLoadError(null);
-      })
-      .catch(() => {
-        setLoadError('Failed to load configuration. Refresh to try again.');
-      })
-      .finally(() => setLoading(false));
+    void loadConfiguration();
   }, []);
 
   function updateResultColumn(index: number, value: string) {
@@ -190,98 +195,154 @@ export default function AdminPage() {
     }
   }
 
-  if (loading) return <main className="p-8">Loading...</main>;
+  if (loading) {
+    return (
+      <main className="app-shell">
+        <div className="app-content">
+          <section className="surface-card p-5 sm:p-8" aria-busy="true" aria-live="polite">
+            <p className="eyebrow">Admin configuration</p>
+            <h1 className="mt-2 text-2xl font-semibold tracking-tight text-[var(--color-navy)]">
+              Admin: Column Mapping
+            </h1>
+            <p className="mt-2 text-sm text-[var(--color-muted)]">Loading configuration...</p>
+            <div className="mt-6 space-y-4" aria-hidden="true">
+              <div className="h-11 animate-pulse rounded bg-slate-100" />
+              <div className="h-32 animate-pulse rounded bg-slate-100" />
+            </div>
+          </section>
+        </div>
+      </main>
+    );
+  }
 
   if (loadError) {
     return (
-      <main className="mx-auto max-w-xl p-8">
-        <div className="mb-6 flex items-center justify-between">
-          <h1 className="text-2xl font-semibold">Admin: Column Mapping</h1>
-          <Link href="/" className="text-blue-600 hover:underline">
+      <main className="app-shell">
+        <div className="app-content">
+          <section className="surface-card p-5 sm:p-8" aria-labelledby="admin-heading">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div>
+                <p className="eyebrow">Admin configuration</p>
+                <h1 id="admin-heading" className="mt-2 text-2xl font-semibold tracking-tight text-[var(--color-navy)]">
+                  Admin: Column Mapping
+                </h1>
+              </div>
+              <Link href="/" className="font-medium text-[var(--color-blue)] hover:text-[var(--color-blue-dark)] hover:underline">
             Back to search
-          </Link>
+              </Link>
+            </div>
+            <p role="alert" className="status-message status-error mt-6">{loadError}</p>
+            <button type="button" onClick={() => void loadConfiguration()} className="button-secondary mt-4">
+              Retry loading configuration
+            </button>
+          </section>
         </div>
-        <p className="text-red-600">{loadError}</p>
       </main>
     );
   }
 
   return (
-    <main className="mx-auto max-w-xl p-8">
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Admin: Column Mapping</h1>
-        <Link href="/" className="text-blue-600 hover:underline">
-          Back to search
-        </Link>
-      </div>
-
-      <label htmlFor="searchColumn" className="mb-1 block text-sm font-medium text-gray-700">
-        Search column
-      </label>
-      <select
-        id="searchColumn"
-        aria-label="Search column"
-        value={searchColumn}
-        onChange={(e) => handleSearchColumnChange(e.target.value)}
-        className="mb-4 w-full rounded border border-gray-300 px-3 py-2"
-      >
-        <option value="">Select a column</option>
-        {headers.map((h) => (
-          <option key={h} value={h}>
-            {h}
-          </option>
-        ))}
-      </select>
-
-      <fieldset className="mb-4">
-        <legend className="mb-1 text-sm font-medium text-gray-700">Result columns</legend>
-        <div className="space-y-3">
-          {resultColumns.map((column, index) => (
-            <div key={rowKeys[index] ?? index} className="flex items-center gap-3">
-              <label className="flex-1 text-sm text-gray-700">
-                <span className="mb-1 block font-medium">Displayed column {index + 1}</span>
-                <select
-                  aria-label={`Displayed column ${index + 1}`}
-                  value={column}
-                  onChange={(e) => updateResultColumn(index, e.target.value)}
-                  className="w-full rounded border border-gray-300 px-3 py-2"
-                >
-                  <option value="">Select a column</option>
-                  {getDisplayOptions(index).map((header) => (
-                    <option key={header} value={header}>
-                      {header}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <button
-                type="button"
-                aria-label={`Remove displayed column ${index + 1}`}
-                onClick={() => removeResultColumnRow(index)}
-                disabled={resultColumns.length === 1}
-                className="rounded border border-gray-300 px-3 py-2 text-sm text-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                Remove
-              </button>
-            </div>
-          ))}
+    <main className="app-shell overflow-x-hidden">
+      <div className="app-content">
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <p className="eyebrow">Admin configuration</p>
+            <h1 id="admin-heading" className="mt-2 text-2xl font-semibold tracking-tight text-[var(--color-navy)]">
+              Admin: Column Mapping
+            </h1>
+          </div>
+          <Link href="/" className="font-medium text-[var(--color-blue)] hover:text-[var(--color-blue-dark)] hover:underline">
+            Back to search
+          </Link>
         </div>
-        <button
-          type="button"
-          onClick={addResultColumnRow}
-          className="mt-3 rounded border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-        >
-          Add display column
-        </button>
-      </fieldset>
 
-      <button
-        onClick={handleSave}
-        className="rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
-      >
-        Save
-      </button>
-      {status && <p className="mt-4">{status}</p>}
+        <div className="grid gap-5 lg:grid-cols-2">
+          <section className="surface-card p-5 sm:p-6" aria-labelledby="search-mapping-heading">
+            <h2 id="search-mapping-heading" className="text-lg font-semibold text-[var(--color-navy)]">
+              What can be searched
+            </h2>
+            <p className="mt-1 text-sm text-[var(--color-muted)]">
+              Choose the sheet column admins can search by.
+            </p>
+            <div className="mt-5">
+              <label htmlFor="searchColumn" className="mb-2 block text-sm font-medium">
+                Search column
+              </label>
+              <select
+                id="searchColumn"
+                aria-label="Search column"
+                value={searchColumn}
+                onChange={(e) => handleSearchColumnChange(e.target.value)}
+                className="field-control"
+              >
+                <option value="">Select a column</option>
+                {headers.map((h) => (
+                  <option key={h} value={h}>
+                    {h}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </section>
+
+          <section className="surface-card p-5 sm:p-6" aria-labelledby="display-mapping-heading">
+            <h2 id="display-mapping-heading" className="text-lg font-semibold text-[var(--color-navy)]">
+              What is displayed
+            </h2>
+            <p className="mt-1 text-sm text-[var(--color-muted)]">
+              Choose the sheet columns shown with each search result.
+            </p>
+            <fieldset className="mt-5">
+              <legend className="sr-only">Result columns</legend>
+              <div className="space-y-3">
+                {resultColumns.map((column, index) => (
+                  <div key={rowKeys[index] ?? index} className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-end">
+                    <label className="flex-1 text-sm">
+                      <span className="mb-2 block font-medium">Displayed column {index + 1}</span>
+                      <select
+                        aria-label={`Displayed column ${index + 1}`}
+                        value={column}
+                        onChange={(e) => updateResultColumn(index, e.target.value)}
+                        className="field-control"
+                      >
+                        <option value="">Select a column</option>
+                        {getDisplayOptions(index).map((header) => (
+                          <option key={header} value={header}>
+                            {header}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <button
+                      type="button"
+                      aria-label={`Remove displayed column ${index + 1}`}
+                      onClick={() => removeResultColumnRow(index)}
+                      disabled={resultColumns.length === 1}
+                      className="button-secondary shrink-0 text-sm disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <button type="button" onClick={addResultColumnRow} className="button-secondary mt-4 text-sm">
+                Add display column
+              </button>
+            </fieldset>
+          </section>
+        </div>
+
+        <div className="mt-5 flex flex-wrap items-center gap-4">
+          <button type="button" onClick={handleSave} className="button-primary">
+            Save
+          </button>
+          {status && (
+            <p role="status" aria-live="polite" className={`status-message ${status === 'Saved.' ? 'status-success' : 'status-error'}`}>
+              {status}
+            </p>
+          )}
+        </div>
+      </div>
     </main>
   );
 }
