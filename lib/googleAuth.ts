@@ -37,7 +37,10 @@ export function getGoogleAuthClient(subjectToken?: string): BaseExternalAccountC
     subject_token_type: 'urn:ietf:params:oauth:token-type:jwt',
     token_url: 'https://sts.googleapis.com/v1/token',
     service_account_impersonation_url: `https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/${serviceAccountEmail}:generateAccessToken`,
-    scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+    scopes: [
+      'https://www.googleapis.com/auth/spreadsheets',
+      'https://www.googleapis.com/auth/drive.metadata.readonly',
+    ],
     subject_token_supplier: getSubjectTokenSupplier(subjectToken),
   });
 

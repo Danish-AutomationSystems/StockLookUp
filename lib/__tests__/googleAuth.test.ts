@@ -73,9 +73,10 @@ describe('getGoogleAuthClient', () => {
     expect((getGoogleAuthClient() as any).quotaProjectId).toBeUndefined();
   });
 
-  it('requests the Google Sheets scope for service-account access tokens', () => {
+  it('requests the Sheets and Drive metadata scopes for service-account access tokens', () => {
     expect((getGoogleAuthClient() as any).scopes).toEqual([
       'https://www.googleapis.com/auth/spreadsheets',
+      'https://www.googleapis.com/auth/drive.metadata.readonly',
     ]);
   });
 
