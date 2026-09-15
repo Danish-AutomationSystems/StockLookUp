@@ -54,4 +54,45 @@ describe('SheetStatus', () => {
     await vi.advanceTimersByTimeAsync(60 * 1000);
     await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(2));
   });
+
+  it('ages the displayed relative time even when the fetched modifiedTime is unchanged', async () => {
+    const t0 = new Date('2024-01-01T00:00:00.000Z');
+    vi.setSystemTime(t0);
+    const modifiedTime = new Date(t0.getTime() - 60 * 1000).toISOString(); // 1 min before t0
+
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ modifiedTime }),
+    }) as any;
+
+    render(<SheetStatus />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Data updated 1 min ago/i)).toBeInTheDocument();
+    });
+
+    // Advance 2 more minutes without the fetched modifiedTime ever changing.
+    await vi.advanceTimersByTimeAsync(2 * 60 * 1000);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Data updated 3 min ago/i)).toBeInTheDocument();
+    });
+  });
+
+  it('stops polling once unmounted', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ modifiedTime: new Date().toISOString() }),
+    }) as any;
+
+    const { unmount } = render(<SheetStatus />);
+    await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(1));
+
+    unmount();
+    const callsAtUnmount = (global.fetch as any).mock.calls.length;
+
+    await vi.advanceTimersByTimeAsync(2 * 60 * 1000);
+
+    expect(global.fetch).toHaveBeenCalledTimes(callsAtUnmount);
+  });
 });

@@ -7,6 +7,7 @@ const POLL_INTERVAL_MS = 60 * 1000;
 
 export default function SheetStatus() {
   const [modifiedTime, setModifiedTime] = useState<string | null>(null);
+  const [now, setNow] = useState(() => new Date());
 
   useEffect(() => {
     let cancelled = false;
@@ -23,7 +24,10 @@ export default function SheetStatus() {
     }
 
     void poll();
-    const intervalId = setInterval(() => void poll(), POLL_INTERVAL_MS);
+    const intervalId = setInterval(() => {
+      void poll();
+      if (!cancelled) setNow(new Date());
+    }, POLL_INTERVAL_MS);
 
     return () => {
       cancelled = true;
@@ -35,7 +39,7 @@ export default function SheetStatus() {
 
   return (
     <span title={new Date(modifiedTime).toLocaleString()} className="text-sm text-[var(--color-muted)]">
-      Data updated {formatRelativeTime(modifiedTime, new Date())}
+      Data updated {formatRelativeTime(modifiedTime, now)}
     </span>
   );
 }
