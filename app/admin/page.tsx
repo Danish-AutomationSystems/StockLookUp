@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import SheetStatus from '@/components/SheetStatus';
 
 function initializeResultColumns(
   headers: string[],
@@ -273,6 +274,9 @@ export default function AdminPage() {
             <h1 id="admin-heading" className="mt-2 text-2xl font-semibold tracking-tight text-[var(--color-navy)]">
               Admin: Column Mapping
             </h1>
+            <div className="mt-1">
+              <SheetStatus />
+            </div>
           </div>
           <Link href="/" className="link-target font-medium text-[var(--color-blue)] hover:text-[var(--color-blue-dark)] hover:underline">
             Back to search

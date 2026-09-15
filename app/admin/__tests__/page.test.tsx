@@ -35,6 +35,10 @@ function setupFetchMock({
   postResponse?: MockResponse | Promise<MockResponse>;
 } = {}) {
   const fetchMock = vi.fn().mockImplementation((url: string, options?: RequestInit) => {
+    if (url === '/api/sheet-status') {
+      return Promise.resolve(mockJsonResponse({}));
+    }
+
     if (url !== '/api/admin/config') {
       throw new Error(`Unexpected URL: ${url}`);
     }
@@ -199,7 +203,7 @@ describe('AdminPage', () => {
     await waitForPageToLoad();
 
     await user.click(screen.getByRole('button', { name: 'Save' }));
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
 
     await user.selectOptions(getDisplayedColumnSelect(1), 'Price');
 
@@ -229,7 +233,7 @@ describe('AdminPage', () => {
     await user.click(screen.getByRole('button', { name: 'Save' }));
 
     expect(await screen.findByText('Displayed column 1 is required.')).toBeInTheDocument();
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   it('shows a safe server validation message when POST fails', async () => {

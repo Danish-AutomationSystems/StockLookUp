@@ -5,6 +5,7 @@ import { useSession, signOut } from 'next-auth/react';
 import Link from 'next/link';
 import SearchForm from '@/components/SearchForm';
 import ResultCard from '@/components/ResultCard';
+import SheetStatus from '@/components/SheetStatus';
 import type { SearchResult } from '@/types';
 
 export default function HomePage() {
@@ -36,7 +37,10 @@ export default function HomePage() {
     <main className="app-shell">
       <header className="app-header">
         <div className="app-content flex items-center justify-between py-4">
-          <Link href="/" className="link-target app-brand text-lg">StockLooker</Link>
+          <div className="flex items-center gap-3">
+            <Link href="/" className="link-target app-brand text-lg">StockLooker</Link>
+            <SheetStatus />
+          </div>
           <div className="flex items-center gap-3 text-base sm:text-sm">
           {(session?.user as any)?.isAdmin && (
             <Link href="/admin" className="link-target font-medium text-[var(--color-blue)] hover:text-[var(--color-blue-dark)] hover:underline">
