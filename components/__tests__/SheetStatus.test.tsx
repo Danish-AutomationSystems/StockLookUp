@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import SheetStatus from '@/components/SheetStatus';
+import { formatAbsoluteTime } from '@/lib/formatAbsoluteTime';
 
 describe('SheetStatus', () => {
   beforeEach(() => {
@@ -18,7 +19,7 @@ describe('SheetStatus', () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  it('renders the relative time with an absolute-time tooltip after fetching', async () => {
+  it('renders the relative time with the absolute time inline and as a tooltip', async () => {
     const modifiedTime = new Date(Date.now() - 5 * 60 * 1000).toISOString();
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
@@ -27,11 +28,12 @@ describe('SheetStatus', () => {
 
     render(<SheetStatus />);
 
+    const absolute = formatAbsoluteTime(modifiedTime);
     await waitFor(() => {
-      expect(screen.getByText(/Data updated 5 min ago/i)).toBeInTheDocument();
+      expect(screen.getByText(new RegExp(`Data updated 5 min ago \\(${absolute.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\)`))).toBeInTheDocument();
     });
     const el = screen.getByText(/Data updated 5 min ago/i);
-    expect(el).toHaveAttribute('title', new Date(modifiedTime).toLocaleString());
+    expect(el).toHaveAttribute('title', absolute);
   });
 
   it('renders nothing when the fetch response is not ok', async () => {

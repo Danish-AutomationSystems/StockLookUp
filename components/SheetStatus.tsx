@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { formatRelativeTime } from '@/lib/formatRelativeTime';
+import { formatAbsoluteTime } from '@/lib/formatAbsoluteTime';
 
 const POLL_INTERVAL_MS = 60 * 1000;
 
@@ -38,8 +39,8 @@ export default function SheetStatus() {
   if (!modifiedTime) return null;
 
   return (
-    <span title={new Date(modifiedTime).toLocaleString()} className="text-sm text-[var(--color-muted)]">
-      Data updated {formatRelativeTime(modifiedTime, now)}
+    <span title={formatAbsoluteTime(modifiedTime)} className="text-sm text-[var(--color-muted)]">
+      Data updated {formatRelativeTime(modifiedTime, now)} ({formatAbsoluteTime(modifiedTime)})
     </span>
   );
 }
